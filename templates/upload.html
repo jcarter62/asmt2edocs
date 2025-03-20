@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Upload a Assessment Billing PDF containing all accounts</h2>
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept="application/pdf" required>
+    <button type="submit">Upload</button>
+</form>
+    <hr>
+    <h3>Currently uploaded files:</h3>
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-8">
+                            Filename
+                        </div>
+                        <div class="col-md-2">
+                            Processed
+                        </div>
+                        <div class="col-md-2">
+                            Action
+                        </div>
+                    </div>
+                </li>
+
+                {% for file in files %}
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-8">
+                            {{ file.filename }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ file.processed }}
+                        </div>
+                        <div class="col-md-2">
+                            <button id="{{file.id}}_set" class="btn btn-danger"
+                            onclick="deleteFile('{{ file.filename }}');"
+                            >Delete</button>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteFile(filename) {
+
+    let url = "/upload/delete/" + filename;
+    fetch(url , {
+        method: "POST",
+    })
+    .then(response => response.json())
+    .then(result => {
+        // Handle the result if needed
+        alert("files deleted successfully.");
+        location.reload();
+    })
+    .catch(error => {
+        console.error("Error saving settings:", error);
+        alert("An error occurred while saving the settings.");
+    });
+}
+</script>
+
+
+{% endblock %}

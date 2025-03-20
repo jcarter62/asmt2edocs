@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Select Files for Processing</h2>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <ul class="list-group">
+                    {% for file in files %}
+                        <li class="list-group-item">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div id="{{ file.id }}">{{ file.filename }}</div>
+                                </div>
+                                <!-- https://emojipedia.org/ -->
+                                <div class="col-md-1">
+                                    <button id="{{ file.id }}_set" class="btn btn-primary"
+                                            title="Settings for this file"
+                                            onclick="showHideSettings('{{ file.id }}', '{{ file.filename }}');"
+                                    >
+                                        <img src="/static/images/cogs.svg" width="20" height="20" alt="gear">
+                                    </button>
+                                </div>
+                                <div class="col-md-1">
+                                    <button id="{{ file.id }}B" class="btn btn-primary"
+                                            onclick="asyncSubmit(event, '{{ file.filename }}', '{{ file.id }}');"
+                                            title="Calculate page numbers for each account in the pdf"
+                                    >
+                                        <img src="/static/images/text-box-search-outline.svg" width="20" height="20"
+                                             alt="calculator">
+                                    </button>
+                                </div>
+                                <div class="col-md-1">
+                                    <button id="{{ file.id }}EP" class="btn btn-primary"
+                                            onclick="window.location = '/extract-pages/{{ file.filename }}'"
+                                            title="Extract pages for each account in the pdf"
+                                            {% if not file.processed %} disabled {% endif %}
+                                    >
+                                        <img src="/static/images/content-copy.svg" width="20" height="20" alt="file">
+                                    </button>
+                                </div>
+                                <div class="col-md-1">
+                                    <button id="{{ file.id }}DEL" class="btn btn-danger"
+                                            onclick="showHideDelDiv('{{ file.id }}');"
+                                            title="Delete all extracted pages in account's folder"
+                                            {% if not file.processed %} disabled {% endif %}
+                                    >
+                                        <img src="/static/images/file-document-remove-outline.svg" width="20" height="20" alt="file">
+                                    </button>
+                                </div>
+                                <div class="col-md-1">
+                                    <!-- add a spinner icon here -->
+                                    <div class="spinner-border text-primary"
+                                         style="display: none;"
+                                         role="status"
+                                         id="{{ file.id }}icon">
+                                        <span class="sr-only">Loading...</span>
+                                    </div>
+                                </div>
+
+                                <!--    The following is a small settings div that allows users to specify
+                                        search patterns and save options for each file.
+                                        It is hidden by default and can be shown/hidden by clicking the gear icon. -->
+                                <div class="row" id="{{ file.id }}_set_div" style="display: none; width: 100%;">
+                                    <hr>
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="sp_{{ file.id }}">Search Pattern:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="text" id="sp_{{ file.id }}"
+                                                       name="sp_{{ file.id }}"
+                                                       class="form-control"
+                                                >
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="sa_{{ file.id }}">Save As:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="text" id="sa_{{ file.id }}" name="sa_{{ file.id }}"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="sd_{{ file.id }}">Save Date:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="date" id="sd_{{ file.id }}" name="sd_{{ file.id }}"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="pd_{{ file.id }}">Process Date:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="date" id="pd_{{ file.id }}" name="pd_{{ file.id }}"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">&nbsp;</div>
+                                            <div class="col-md-8">
+                                                <button class="btn btn-primary"
+                                                        onclick="saveSettings('{{ file.id }}', '{{ file.filename }}');">
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!--    The following is a small delete div that allows users to delete all generated
+                                        account pdf files for each file. It is hidden by default and can be
+                                        shown/hidden by clicking the file-delete-remove-outline icon. -->
+                                <div class="row" id="{{ file.id }}_del_div" style="display: none; width: 100%;">
+                                    <hr>
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <label>
+                                                    Delete All Generated Account PDF files for:
+                                                    {{ file.filename }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <button class="btn btn-danger"
+                                                        onclick="deleteAllFiles('{{ file.id }}', '{{ file.filename }}');">
+                                                    Delete All Files
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function asyncSubmit(event, filename, id) {
+            event.preventDefault();
+            const formData = new FormData();
+            formData.append("filename", filename);
+
+            let element = document.getElementById(id + "B");
+            element.disabled = true;
+            element = document.getElementById(id + "EP");
+            element.disabled = true;
+            element = document.getElementById(id + "icon");
+            element.style.display = "block";
+
+            fetch("/process", {
+                method: "POST",
+                body: formData
+            })
+                .then(response => response.json())
+                .then(result => {
+                    // Handle the result if needed
+                    element = document.getElementById(id + "B");
+                    element.disabled = false;
+                    element = document.getElementById(id + "EP");
+                    element.disabled = false;
+                    element = document.getElementById(id + "icon");
+                    element.style.display = "none";
+
+                })
+                .catch(error => {
+                    alert("An error occurred while processing the file.");
+                });
+
+            return false;
+        }
+
+        function showHideSettings(id, filename) {
+            let elem = document.getElementById(id + "_set_div");
+            if (elem.style.display === "none") {
+                elem.style.display = "block";
+                loadSettings(id, filename);
+            } else {
+                elem.style.display = "none";
+            }
+        }
+
+        function showHideDelDiv(id) {
+            let elem = document.getElementById(id + "_del_div");
+            if (elem.style.display === "none") {
+                elem.style.display = "block";
+            } else {
+                elem.style.display = "none";
+            }
+        }
+
+
+        function loadSettings(id, filename) {
+            let elem = document.getElementById(id + "_set_div");
+            // Load settings for the specific file using /settings/load/{{ filename }}
+            let url = "/settings/load/" + filename;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate the settings fields with the loaded data
+                    document.getElementById("sp_" + id).value = data.search_pattern;
+                    document.getElementById("sa_" + id).value = data.save_as;
+                    document.getElementById("sd_" + id).value = data.save_date;
+                    document.getElementById("pd_" + id).value = data.process_date;
+                })
+                .catch(error => {
+                    console.error("Error loading settings:", error);
+                });
+        }
+
+        function saveSettings(id, filename) {
+            let searchPattern = document.getElementById("sp_" + id).value;
+            let saveAs = document.getElementById("sa_" + id).value;
+            let saveDate = document.getElementById("sd_" + id).value;
+            let processDate = document.getElementById("pd_" + id).value;
+
+            const formData = new FormData();
+            formData.append("search_pattern", searchPattern);
+            formData.append("save_as", saveAs);
+            formData.append("save_date", saveDate);
+            formData.append("process_date", processDate);
+
+            let url = "/settings/save/" + filename;
+            fetch(url, {
+                method: "POST",
+                body: formData
+            })
+                .then(response => response.json())
+                .then(result => {
+                    // Handle the result if needed
+                    alert("Settings saved successfully.");
+                })
+                .catch(error => {
+                    console.error("Error saving settings:", error);
+                    alert("An error occurred while saving the settings.");
+                });
+        }
+
+
+        {#onclick="deleteAllFiles('{{ file.id }}', '{{ file.filename }}');">#}
+
+        function deleteAllFiles(id, filename) {
+            const formData = new FormData();
+            formData.append("filename", filename);
+
+            let url = "/delete/all/files";
+            fetch(url, {
+                method: "POST",
+                body: formData
+            })
+                .then(response => response.json())
+                .then(result => {
+                    let msg = result.info;
+
+                    alert(msg);
+                })
+                .catch(error => {
+                    console.error("Error deleting files:", error);
+                    alert("An error occurred while saving the settings.");
+                });
+        }
+
+    </script>
+{% endblock %}

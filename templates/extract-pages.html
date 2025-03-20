@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h2>Extract Pages from: {{pdf}}</h2>
+        </div>  
+    </div>
+    <div class="row">
+        <div class="col-12">
+            Save as document with name: <label id=output_file>{{ settings.save_as }}</label>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            Save Date: <label id="save_date">{{ settings.save_date }}</label>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <hr>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4">
+            <button class="btn btn-primary" onclick="extractPages()" id="extract_btn">
+                Extract Pages
+            </button>
+        </div>
+    </div>
+</div> <!-- container -->
+
+<div class="container">
+    <div class="row">
+        <div class="col-2">
+            Status: 
+        </div>
+        <div class="col-10">
+            <div id="status">Ready</div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="progress" style="height: 2rem;">
+                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+        </div>
+    </div>    
+</div> <!-- container -->
+
+<script>
+let pgs = [];
+let start_time = new Date();
+let finish_time = new Date();
+
+function calc_finish_time(progress) {
+    let current_time = new Date();
+    let time_diff = current_time - start_time;
+    let time_remaining = ((time_diff * 100) / progress) - time_diff;
+    finish_time = new Date(current_time.getTime() + time_remaining);
+    return finish_time.toLocaleTimeString("en-US", {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+}
+
+async function extractPages() {
+    start_time = new Date();
+
+    let btnid = document.getElementById("extract_btn");
+    btnid.disabled = true;
+    let statusid = document.getElementById("status");
+    let progressBar = document.getElementById("progress-bar");
+    statusid.innerText = "Processing...";
+    progressBar.style.width = "0%";
+    progressBar.setAttribute("aria-valuenow", "0");
+    progressBar.innerText = "0%";
+
+    let numAccts = pgs.length;
+    let numDone = 0;
+
+    for (const element of pgs) {
+        numDone++;
+        await process_one_Account(element, numDone, numAccts);
+        let progress = (numDone / numAccts) * 100;
+        progressBar.style.width = progress + "%";
+        progressBar.setAttribute("aria-valuenow", progress);
+        progressBar.innerText = Math.round(progress) + "% - finish at:" + calc_finish_time(progress);
+    }
+
+    statusid.innerText = "Done";
+    btnid.disabled = false;
+}
+
+async function process_one_Account(item, numDone, numAccts) {
+    function base32Encode(inputObj) {
+        const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        let bits = 0;
+        let value = 0;
+        let output = '';
+
+        const input = JSON.stringify(inputObj);
+
+        for (let i = 0; i < input.length; i++) {
+            value = (value << 8) | input.charCodeAt(i);
+            bits += 8;
+
+            while (bits >= 5) {
+                output += alphabet[(value >>> (bits - 5)) & 31];
+                bits -= 5;
+            }
+        }
+
+        if (bits > 0) {
+            // Process any remaining bits (pad with zero bits on the right)
+            output += alphabet[(value << (5 - bits)) & 31];
+        }
+
+        // Note: RFC 4648 recommends padding with '=' to reach a multiple of 8 characters,
+        // but it's optional and depends on your use-case.
+        return output;
+    }
+
+    item['filename'] = "{{pdf}}";
+    {#item['save_as'] = document.getElementById("output_file").value;#}
+    {#item['save_date'] = document.getElementById("save_date").value;#}
+
+    let params = base32Encode(item);
+    let url = "/extract-one-account/" + params;
+
+    let statusid = document.getElementById("status");
+    let statusmsg = "Processing account: " + item.account + " (" + numDone + " of " + numAccts + ")";
+    statusid.innerText = statusmsg;
+
+    try {
+        let resp = await fetch(url, { method: "GET" });
+        
+        if (!resp.ok) {
+            throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+
+        const contentType = resp.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            let result = await resp.json();
+            // Handle the result if needed
+            statusid.innerText = "Completed account: " + item.account;
+            return true;
+        } else {
+            throw new Error("Response is not JSON");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        statusid.innerText = "Error processing account: " + item.account;
+        return false;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    // Retrieve the stored value from local storage and set it to the input field
+    let storedValue = localStorage.getItem("output_file");
+    if (storedValue) {
+        document.getElementById("output_file").value = storedValue;
+    }
+    let storedDate = localStorage.getItem("save_date");
+    if (storedDate) {
+        document.getElementById("save_date").value = storedDate;
+    }
+
+    // Add event listener to save the value to local storage on input change
+    document.getElementById("output_file").addEventListener("input", function(event) {
+        localStorage.setItem("output_file", event.target.value);
+    });
+    document.getElementById("save_date").addEventListener("input", function(event) {
+        localStorage.setItem("save_date", event.target.value);
+    });
+
+    {% for p in pages %} pgs.push(JSON.parse('{{ p|tojson }}'));{% endfor %}
+});
+</script>
+
+{% endblock %}
