@@ -1,6 +1,11 @@
 # app specific files
-__pycache__/
+.idea/
+.venv/
+.vscode/
+app-data/
+.env
 *.py[cod]
+__pycache__/
 app-data/
 
 
@@ -12,9 +17,6 @@ yarn-error.log
 # Logs
 logs/
 *.log
-
-# dotenv environment variables file
-.env
 
 # MacOS
 .DS_Store

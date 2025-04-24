@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <h2>Notify for: {{filename}}</h2>
+        </div>  
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <hr>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-4">
+            <button class="btn btn-primary" onclick="calcEA('{{filename}}')" id="calcEA_btn">
+                Calc Email Accounts for this PDF
+            </button>
+        </div>
+    </div>
+    {% if message %}
+    <div class="row">
+        <div class="col-12">
+            <hr>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info" role="alert">
+                {{ message }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if email_list %}
+    <div class="container">
+        <div class="row" style="padding-bottom: 1rem;">
+            <div class="col-8">Email Address</div>
+            <div class="col-2">Action</div>
+            <div class="col-2">Status</div>
+        </div>
+        {% for email in email_list %}
+        <div class="row">
+            <div class="col-8">{{ email }}</div>
+            <div class="col-2" id="{{email}}-send">
+                <button class="btn btn-primary"  
+                    style="padding-left: 0.25rem; padding-right: 0.25rem; padding-top: 0.15rem; padding-bottom: 0.15rem;" 
+                    onclick="sendOne('{{ email }}', '{{ filename }}');">
+                    Send
+                </button>
+            </div>
+            <div class="col-2" id="{{email}}-status">
+                {% if email in sent_emails %}
+                    <span class="badge bg-success">Sent</span>
+                {% else %}
+                    <span class="badge bg-danger">Not Sent</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div> <!-- container -->
+
+<script>
+let pgs = [];
+let start_time = new Date();
+let finish_time = new Date();
+
+async function calcEA(filename) {
+    let btnid = document.getElementById("calcEA_btn");
+    btnid.disabled = true;
+
+    let url = "/notify/calcEA/" + filename;
+
+    // Fetch the list of email accounts from the server via post request
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    });
+    console.log("Response: ", response);
+    btnid.disabled = false;
+}
+
+async function sendOne(email, filename) {
+    let btnid = document.getElementById(email + "-send");
+    btnid.disabled = true;
+    let statusid = document.getElementById(email + "-status");
+    statusid.innerHTML = '<span class="badge bg-warning">Sending...</span>';
+    let url = "/notify/send-one-email";
+    // send form data instead of JSON
+    const formData = new URLSearchParams({
+        email: email,
+        filename: filename,
+    });
+    const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+    });
+    console.log("Response: ", response);
+}
+
+</script>
+
+{% endblock %}

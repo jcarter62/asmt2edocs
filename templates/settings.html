@@ -1,107 +1,84 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Settings</h2>
-<form action="/settings" method="post">
-    <div class="form-group">
-        <label for="company">Company Name:</label>
-        <input type="text" id="company" name="company" class="form-control" value="{{ company }}">
+    <h2>Settings</h2>
+    <div class="container">
 
-        <label for="appname">App Name:</label>
-        <input type="text" id="appname" name="appname" class="form-control" value="{{ appname }}">
+        <form action="/settings" method="post">
+            <div class="form-group">
+                <label for="company">Company Name:</label>
+                <input type="text" id="company" name="company" class="form-control" value="{{ company }}">
 
-{#        <label for="search_pattern">Search Pattern:</label>#}
-{#        <div class="row">#}
-{#            <div class="col-md-11">#}
-{#                <input type="text" id="search_pattern" name="search_pattern" class="form-control" value="{{ search_pattern }}">#}
-{#            </div>#}
-{#            <div class="col-md-1">#}
-{#                <button type="button" id="search_pattern_info_button" class="btn btn-info">?</button>#}
-{#            </div>#}
-{#        </div>#}
-{#        <p id="search_pattern_info" style="display: none;">#}
-{#            The search pattern is used to find the account number in the pdf.  The search pattern#}
-{#            is a regular expression that is used to find the account number in the pdf.  The account#}
-{#            number is used to create the list of accounts and page numbers for individual accounts.  The search#}
-{#            pattern should be a regular expression that will match the account number in the pdf.  Here is#}
-{#            a reference for regular expressions:#}
-{#            <a href="https://gotellilab.github.io/Bio381/Scripts/Feb07/RegularExpressionsTutorial.pdf" target="_blank">#}
-{#                Regular Expressions: The complete Tutorial.#}
-{#            </a>#}
-{#            Here are some examples:<br>#}
-{#            * Account Number: 1234567890,#}
-{#            Search Pattern: "\d{10}",#}
-{#            Explanation: This will match any 10 digit number.<br>#}
-{#            * Account Number\n1234,#}
-{#            Search Pattern: "Account Number\n(\d+)\b",#}
-{#            Explanation: This will match the string 'Account Number' followed by a newline,#}
-{#            then 1 or more digits, followed by a space.<br>#}
-{#        </p>#}
-{##}
-        <label for="upload_folder">Upload Folder:</label>
-        <div class="row">
-            <div class="col-md-11">
-                <input type="text" id="upload_folder" name="upload_folder" class="form-control" value="{{ upload_folder }}">
-            </div>
-            <div class="col-md-1">
-                <button type="button" id="upload_folder_info_button" class="btn btn-info">?</button>
-            </div>
-        </div>
-        <p id="upload_folder_info" style="display: none;">
-            This folder is used to store and inspect the pdf containing all accounts.  It is also
-            used to save the list of accounts and page numbers.  This information is used to extract
-            each accounts specific pages from the large pdf.
-        </p>
+                <label for="appname">App Name:</label>
+                <input type="text" id="appname" name="appname" class="form-control" value="{{ appname }}">
 
-        <label for="base_folder">Base Folder:</label>
-        <div class="row">
-            <div class="col-md-11">
-                <input type="text" id="base_folder" name="base_folder" class="form-control" value="{{ base_folder }}">
-            </div>
-            <div class="col-md-1">
-                <button type="button" id="base_folder_info_button" class="btn btn-info">?</button>
-            </div>
-        </div>
-        <p id="base_folder_info" style="display: none;">
-            The base folder is the folder where the individual pdf files are stored for each account.
-            This folder is the root folder for all accounts.  The account number is converted to
-            a 10 digit left zero padded account.  This 10 digit account is split into 5, two digit
-            folders.  Example account 4410 is converted into 0000004410, and then split into 5 parts.
-            00 00 00 44 10, and then a path is generated using these parts.  The full path is:
-            {base folder}/00/00/00/44/10.  This is where the individual pdf is stored for this account.
-        </p>
+                <label for="upload_folder">Upload Folder:</label>
+                <div class="row">
+                    <div class="col-md-11">
+                        <input type="text" id="upload_folder" name="upload_folder" class="form-control"
+                               value="{{ upload_folder }}">
+                    </div>
+                    <div class="col-md-1 text-right">
+                        <button type="button" id="upload_folder_info_button" class="btn btn-info">?</button>
+                    </div>
+                </div>
+                <p id="upload_folder_info" style="display: none;">
+                    This folder is used to store and inspect the pdf containing all accounts. It is also
+                    used to save the list of accounts and page numbers. This information is used to extract
+                    each accounts specific pages from the large pdf.
+                </p>
 
+                <label for="base_folder">Base Folder:</label>
+                <div class="row">
+                    <div class="col-md-11">
+                        <input type="text" id="base_folder" name="base_folder" class="form-control"
+                               value="{{ base_folder }}">
+                    </div>
+                    <div class="col-md-1 text-right">
+                        <button type="button" id="base_folder_info_button" class="btn btn-info">?</button>
+                    </div>
+                </div>
+                <p id="base_folder_info" style="display: none;">
+                    The base folder is the folder where the individual pdf files are stored for each account.
+                    This folder is the root folder for all accounts. The account number is converted to
+                    a 10 digit left zero padded account. This 10 digit account is split into 5, two digit
+                    folders. Example account 4410 is converted into 0000004410, and then split into 5 parts.
+                    00 00 00 44 10, and then a path is generated using these parts. The full path is:
+                    {base folder}/00/00/00/44/10. This is where the individual pdf is stored for this account.
+                </p>
+
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+
+        </form>
     </div>
-    <button type="submit" class="btn btn-primary">Save Settings</button>
-</form>
+    <script>
+        document.getElementById("base_folder_info_button").addEventListener("click", function () {
+            var info = document.getElementById("base_folder_info");
+            if (info.style.display === "none") {
+                info.style.display = "block";
+            } else {
+                info.style.display = "none";
+            }
+        });
 
-<script>
-document.getElementById("base_folder_info_button").addEventListener("click", function() {
-    var info = document.getElementById("base_folder_info");
-    if (info.style.display === "none") {
-        info.style.display = "block";
-    } else {
-        info.style.display = "none";
-    }
-});
+        document.getElementById("upload_folder_info_button").addEventListener("click", function () {
+            var info = document.getElementById("upload_folder_info");
+            if (info.style.display === "none") {
+                info.style.display = "block";
+            } else {
+                info.style.display = "none";
+            }
+        });
 
-document.getElementById("upload_folder_info_button").addEventListener("click", function() {
-    var info = document.getElementById("upload_folder_info");
-    if (info.style.display === "none") {
-        info.style.display = "block";
-    } else {
-        info.style.display = "none";
-    }
-});
-
-document.getElementById("search_pattern_info_button").addEventListener("click", function() {
-    var info = document.getElementById("search_pattern_info");
-    if (info.style.display === "none") {
-        info.style.display = "block";
-    } else {
-        info.style.display = "none";
-    }
-});
+        document.getElementById("search_pattern_info_button").addEventListener("click", function () {
+            var info = document.getElementById("search_pattern_info");
+            if (info.style.display === "none") {
+                info.style.display = "block";
+            } else {
+                info.style.display = "none";
+            }
+        });
 
 
-</script>
+    </script>
 {% endblock %}

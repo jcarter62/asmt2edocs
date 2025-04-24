@@ -8,15 +8,33 @@
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        html, body {
+            height: 100%;
+        }
         /* Custom styles */
         body {
+            display: flex;
+            flex-direction: column;
+
             margin: 0;
             padding: 0;
             font-family: sans-serif;
+            font-size: 1.2vw;
         }
         .container {
             padding: 1rem;
         }
+        main.container {
+            flex: 1;
+        }
+        footer {
+            margin-top: auto;
+            padding-left: 1rem;
+            font-size: 1.2vw;
+            font-style: italic;
+        }
+
+
     </style>
 </head>
 <body>
@@ -36,6 +54,13 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/select">Processing</a>
                 </li>
+                <li class="nav-item">
+                    {% if logged_in %}
+                    <a class="nav-link" href="/auth/logout">Logout</a>
+                    {% else %}
+                    <a class="nav-link" href="/auth/login">Login</a>
+                    {% endif %}
+                </li>
             </ul>
         </div>
     </nav>
@@ -44,7 +69,10 @@
 		<!-- ...existing code... -->
 		{% endblock %}
 	</main>
-	<footer class="bg-light text-center py-3">
+	<footer class="bg-light">
+        {% if username %}
+            <p>Logged in as: {{ username }}</p>
+        {% endif %}
 		&nbsp;
 	</footer>
     <!-- Bootstrap JS and dependencies -->

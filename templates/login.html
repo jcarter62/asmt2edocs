@@ -2,10 +2,39 @@
 {% block content %}
 <div class="container">
     <h2>Login</h2>
-    <form method="POST" action="{% url 'login' %}">
-        {% csrf_token %}
-        {{ form.as_p }}
+    <form method="POST">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <br><br>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <br><br>
         <button type="submit" class="btn btn-primary">Login</button>
-    </form>
+        &nbsp;
+        <button id="help-button" type="button" class="btn btn-secondary float-right" onclick="showNote();">?</button>
+        {%  if message %}
+        <div class="alert alert-danger" role="alert">
+            Login Results: {{ message }}
+        </div>
+        {% endif %}
 
+        <div id="more-info" class="alert alert-info" role="alert" style="display: none;">
+            Note:<br>
+            This system uses Active Directory usernames and passwords.  Additionally, the user must be part
+            of the {{ security_group }} security group.  Please contact IT staff to be added to this security
+            group if you are not already.
+        </div>
+        <script>
+            function showNote() {
+                var info = document.getElementById("more-info");
+                if (info.style.display === "none") {
+                    info.style.display = "block";
+                } else {
+                    info.style.display = "none";
+                }
+            }
+
+        </script>
+    </form>
+</div>
 {% endblock %}

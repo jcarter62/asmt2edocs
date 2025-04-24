@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.responses import RedirectResponse
 import os
 import json
+from auth import Auth
 
 router = APIRouter()
 
@@ -13,6 +14,10 @@ templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 # Optionally, add a route to render the upload page
 @router.get("/", response_class=HTMLResponse)
 def upload_form(request: Request):
+    if not Auth().is_user_logged_in(request):
+        # Redirect to the login page if not logged in
+        return RedirectResponse(url="/auth/login", status_code=303)
+
     # list all .pdf files in the upload_folder and add to the context
     upload_folder = os.environ.get("UPLOAD_FOLDER", "./")
     try:

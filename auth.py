@@ -1,36 +1,62 @@
-from fastapi import Request, HTTPException, APIRouter
+from fastapi import Request, HTTPException, APIRouter, Form
 from fastapi.templating import Jinja2Templates
 from starlette.responses import RedirectResponse
 from dotenv import load_dotenv
 import requests
 import os
+import json
 
 router = APIRouter()
 
-# base_dir = os.path.dirname(os.path.abspath(__file__))
-# templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
+base_dir = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 
 @router.get("/login")
 def auth_login_get(request: Request):
+    load_dotenv()
+    security_group = os.getenv("AUTH_API_GROUP")
     context = {
         "request": request,
         **request.state.context,
+        "security_group": security_group,
     }
     return templates.TemplateResponse("login.html", context)
 
 @router.post("/login")
-def auth_login_post(request: Request, username: str, password: str):
+def auth_login_post(request: Request,
+                    username: str = Form(...),
+                    password: str = Form(...)):
     auth = Auth()
-    if auth.log_in_user(request, username, password):
+    is_logged_in, message = auth.authenticate(username, password)
+    if is_logged_in:
         # Redirect to the settings page after successful login
-        return RedirectResponse(url="/", status_code=200)
+        request.session["user"] = username
+        request.session["authenticated"] = True
+        return RedirectResponse(url="/settings", status_code=303)
     else:
+        if message:
+            msg_obj = json.loads(message)
+            msg_text = msg_obj['message']
+            if message:
+                errmsg = msg_text
+            else:
+                errmsg = None
+        else:
+            errmsg = "Other Error"
         context = {
             "request": request,
             "error": "Invalid username or password",
+            "message": errmsg,
             **request.state.context,
         }
-        return templates.TemplateResponse("settings.html", context)
+        return templates.TemplateResponse("login.html", context)
+
+@router.get("/logout")
+def auth_logout_get(request: Request):
+    request.session["user"] = None
+    request.session["authenticated"] = False
+    request.session.clear()
+    return RedirectResponse(url="/", status_code=303)
 
 class Auth:
     """
@@ -44,7 +70,7 @@ class Auth:
         self.authenticated = False
         self.authorized = False
 
-    def authenticate(self, username, password):
+    def authenticate(self, username, password)-> ( bool, str):
         """
         Authenticate a user.
 
@@ -55,6 +81,7 @@ class Auth:
         # Placeholder for actual authentication logic
         # call the api with username and password and group
         results = False
+        message = ""
         load_dotenv()
         api_url = os.getenv("AUTH_API")
         group = os.getenv("AUTH_API_GROUP")
@@ -69,7 +96,7 @@ class Auth:
         url = f"{api_url}"
         if url.endswith("/"):
             url = url[:-1]
-        url = f"{url}/auth/{group}"
+        url = f"{url}/{group}"
         headers = {
             "Content-Type": "application/json",
         }
@@ -84,7 +111,8 @@ class Auth:
         else:
             self.authenticated = False
             results = False
-        return results
+            message = response.text
+        return results, message
 
     @staticmethod
     def is_user_logged_in(request: Request) -> bool:

@@ -124,7 +124,7 @@ async function process_one_Account(item, numDone, numAccts) {
     {#item['save_date'] = document.getElementById("save_date").value;#}
 
     let params = base32Encode(item);
-    let url = "/extract-one-account/" + params;
+    let url = "/extract/one-account/" + params;
 
     let statusid = document.getElementById("status");
     let statusmsg = "Processing account: " + item.account + " (" + numDone + " of " + numAccts + ")";
@@ -172,8 +172,11 @@ document.addEventListener("DOMContentLoaded", function() {
         localStorage.setItem("save_date", event.target.value);
     });
 
-    {% for p in pages %} pgs.push(JSON.parse('{{ p|tojson }}'));{% endfor %}
+
 });
+
+{% for p in pages %} pgs.push(JSON.parse('{{ p|tojson }}'));{% endfor %}
+
 </script>
 
 {% endblock %}

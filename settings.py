@@ -1,18 +1,21 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from starlette.responses import RedirectResponse
 import os
-import json
+from auth import Auth
 
 router = APIRouter()
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
 
-
 @router.get("/")
 def get_settings(request: Request):
+    if not Auth().is_user_logged_in(request):
+        # Redirect to the login page if not logged in
+        return RedirectResponse(url="/auth/login", status_code=303)
+
     context = {
         "request": request,
         **request.state.context,
@@ -54,40 +57,21 @@ async def update_settings(request: Request,
 @router.get("/load/{filename}")
 def get_settings_for_file(request: Request, filename: str):
     return load_settings_for_file(filename)
-    # result = {
-    # }
-    # upload_folder = os.getenv("upload_folder", "./")
-    # settings_file = os.path.join(upload_folder, filename + ".settings")
-    #
-    # if not os.path.exists(settings_file):
-    #     # create file with default values
-    #     with open(settings_file, "w") as f:
-    #         settings = {
-    #             "search_pattern": "Account Number\\n(\\d+)\\b",
-    #             "save_as": "",
-    #             "save_date": "",
-    #             "process_date": "",
-    #         }
-    #         f.write(json.dumps(settings, indent=4, sort_keys=True))
-    #
-    # settings = {}
-    # with open(settings_file, "r") as f:
-    #     # load the settings from the file
-    #     settings = json.load(f)
-    #
-    # return settings
-
 
 import json
 
 @router.post("/save/{filename}")
 def save_settings_for_file(request: Request, filename: str,
-                           search_pattern: str = Form(...),
-                           save_as: str = Form(...),
-                           save_date: str = Form(...),
-                           process_date: str = Form(...),
+                            search_pattern: str = Form(...),
+                            save_as: str = Form(...),
+                            save_date: str = Form(...),
+                            process_date: str = Form(...),
+                            message_subject: str = Form(...),
+                            message_body: str = Form(...),
+                            include_account_names: bool = Form(...),
+                            include_account_numbers: bool = Form(...),
                            ):
-
+    
     result = {"message": "save_settings_for_file called."}
     upload_folder = os.getenv("upload_folder", "./")
     settings_file = os.path.join(upload_folder, filename + ".settings")
@@ -100,6 +84,10 @@ def save_settings_for_file(request: Request, filename: str,
                 "save_as": save_as,
                 "save_date": save_date,
                 "process_date": process_date,
+                "message_subject": message_subject,
+                "message_body": message_body,
+                "include_account_names": include_account_names,
+                "include_account_numbers": include_account_numbers,
             }
             f.write(json.dumps(settings, indent=4, sort_keys=True))
 
@@ -123,6 +111,10 @@ def load_settings_for_file(filename: str):
                 "save_as": "",
                 "save_date": "",
                 "process_date": "",
+                "message_subject": "",
+                "message_body": "",
+                "include_account_names": False,
+                "include_account_numbers": False,
             }
             f.write(json.dumps(settings, indent=4, sort_keys=True))
 

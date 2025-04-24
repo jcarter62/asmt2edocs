@@ -31,11 +31,20 @@
                                 </div>
                                 <div class="col-md-1">
                                     <button id="{{ file.id }}EP" class="btn btn-primary"
-                                            onclick="window.location = '/extract-pages/{{ file.filename }}'"
+                                            onclick="window.location = '/extract/pages/{{ file.filename }}'"
                                             title="Extract pages for each account in the pdf"
                                             {% if not file.processed %} disabled {% endif %}
                                     >
                                         <img src="/static/images/content-copy.svg" width="20" height="20" alt="file">
+                                    </button>
+                                </div>
+                                <div class="col-md-1">
+                                    <button id="{{ file.id }}email_calc" class="btn btn-primary"
+                                            onclick="window.location = '/notify/show/{{ file.filename }}'"
+                                            title="Determine who to notify via email"
+                                            {% if not file.processed %} disabled {% endif %}
+                                    >
+                                        <img src="/static/images/email-search.svg" width="20" height="20" alt="file">
                                     </button>
                                 </div>
                                 <div class="col-md-1">
@@ -101,6 +110,50 @@
                                                        class="form-control">
                                             </div>
                                         </div>
+
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="ms_{{ file.id }}">Message Subject:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="text" id="ms_{{ file.id }}" name="ms_{{ file.id }}"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="mb_{{ file.id }}">Message Body:</label>
+                                            </div>
+                                            <!-- Allow the user to enter a multiline text body for the messages -->
+                                            <div class="col-md-8">
+                                                <textarea type="textarea" id="mb_{{ file.id }}" name="mb_{{ file.id }}"
+                                                         rows="3" style="overflow:hidden; resize:vertical;"
+                                                       class="form-control">
+                                                </textarea>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="names_{{ file.id }}">Include Account Names:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="checkbox" id="names_{{ file.id }}" name="names_{{ file.id }}"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label for="nums_{{ file.id }}">Include Account Numbers:</label>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <input type="checkbox" id="nums_{{ file.id }}" name="nums_{{ file.id }}"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+
                                         <div class="row">
                                             <div class="col-md-4">&nbsp;</div>
                                             <div class="col-md-8">
@@ -212,6 +265,10 @@
                     document.getElementById("sa_" + id).value = data.save_as;
                     document.getElementById("sd_" + id).value = data.save_date;
                     document.getElementById("pd_" + id).value = data.process_date;
+                    document.getElementById("ms_" + id).value = data.message_subject;
+                    document.getElementById("mb_" + id).value = data.message_body;   
+                    document.getElementById("names_" + id).checked = data.include_account_names;
+                    document.getElementById("nums_" + id).checked = data.include_account_numbers;
                 })
                 .catch(error => {
                     console.error("Error loading settings:", error);
@@ -223,12 +280,20 @@
             let saveAs = document.getElementById("sa_" + id).value;
             let saveDate = document.getElementById("sd_" + id).value;
             let processDate = document.getElementById("pd_" + id).value;
+            let messageSubject = document.getElementById("ms_" + id).value;
+            let messageBody = document.getElementById("mb_" + id).value; 
+            let includeAccountNames = document.getElementById("names_" + id ).checked;
+            let includeAccountNumbers = document.getElementById("nums_" + id).checked;
 
             const formData = new FormData();
             formData.append("search_pattern", searchPattern);
             formData.append("save_as", saveAs);
             formData.append("save_date", saveDate);
             formData.append("process_date", processDate);
+            formData.append("message_subject", messageSubject);
+            formData.append("message_body", messageBody);
+            formData.append("include_account_names", includeAccountNames);
+            formData.append("include_account_numbers", includeAccountNumbers);
 
             let url = "/settings/save/" + filename;
             fetch(url, {
