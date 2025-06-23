@@ -186,13 +186,21 @@ async def notify_send_one_email_post(request: Request,
                 attachments=None,
             )
 
-            send_result = email_Sender.send_email()
+            edb = None
+            try:
+                edb = EmailDB(filename=filename)
+                edb.update_send_status(email, "sending")
+                send_result = email_Sender.send_email()
+                edb.update_send_status(email, "sent")
 
+                result = "Email sent successfully."
+                code = 201
+            except Exception as e:
+                result = f"Error sending email: {str(e)}"
+                code = 500
+            finally:
+                edb = None
 
-
-
-            result = "Email sent successfully."
-            code = 201
         else:
             result = "Email address not found in email addresses file."
             code = 404
