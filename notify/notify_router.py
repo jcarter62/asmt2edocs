@@ -11,6 +11,7 @@ from .generate import calcEA, count_EA, load_email_list_EA
 from data import Data
 from dotenv import load_dotenv
 from emailsender import EmailSender
+from .emaildb import EmailDB
 
 
 app_root = os.getenv("APP_ROOT", os.path.dirname(os.path.abspath(__file__)))
@@ -128,9 +129,11 @@ async def notify_send_one_email_post(request: Request,
                                        email: str = Form(...), 
                                        filename: str = Form(...)):
     result = None
+    code = 500
 
     if not Auth().is_user_logged_in(request):
         result = ""
+        code = 401
     else:
         # verify email found in email_addresses file
         email_settings_file = ''
@@ -185,8 +188,73 @@ async def notify_send_one_email_post(request: Request,
 
             send_result = email_Sender.send_email()
 
+
+
+
             result = "Email sent successfully."
+            code = 201
         else:
             result = "Email address not found in email addresses file."
+            code = 404
         
-    return {'result': result}
+    return {'result': result, 'code': code}
+
+
+
+@router.post("/reset-email-status")
+async def reset_email_status(request: Request, 
+                             filename: str = Form(...)):
+    result = None
+    code = 500
+
+    if not Auth().is_user_logged_in(request):
+        result = ""
+        code = 401
+    else:
+        # reset the email status in the database
+        db = EmailDB(filename=filename)
+        db.reset_email_status()
+        result = "Email status reset successfully."
+        code = 201
+
+@router.post("/set-email-status")
+async def set_email_status(request: Request, 
+                            filename: str = Form(...),
+                            email: str = Form(...),
+                            status: str = Form(...),
+                           ):
+    db = EmailDB(filename=filename)
+    db.update_send_status(email, status)
+    return {"message": "Email status updated successfully."}
+
+@router.post("/reset-all-email-status")
+async def reset_all_email_status(request: Request, 
+                                 filename: str = Form(...),
+                                 status: str = Form(...),
+                                ):
+    #
+    # reset the email status in the database to calculated status
+    #
+    db = EmailDB(filename=filename)
+    # load the email addresses from the file
+    email_settings_file = ''
+    load_dotenv()
+    upload_folder = os.getenv("upload_folder", "./")
+    email_settings_file = os.path.join(upload_folder, filename + ".email_addresses")
+    # load contents of email_addresses file into account_emails
+    account_emails = []
+    if os.path.exists(email_settings_file):
+        with open(email_settings_file, "r") as f:
+            account_emails = json.load(f)
+    else:
+        # if the file does not exist, create an empty list
+        pass
+    #
+    # loop through the email addresses and set the status
+    for item in account_emails:
+        email = item['email']
+        # update the status in the database
+        db.update_send_status(email, status)
+    db = None 
+    return {"message": "All email statuses updated successfully."}
+ 

@@ -43,8 +43,8 @@
         {% for email in email_list %}
         <div class="row">
             <div class="col-8">{{ email }}</div>
-            <div class="col-2" id="{{email}}-send">
-                <button class="btn btn-primary"  
+            <div class="col-2" >
+                <button class="btn btn-primary" id="{{email}}-send"
                     style="padding-left: 0.25rem; padding-right: 0.25rem; padding-top: 0.15rem; padding-bottom: 0.15rem;" 
                     onclick="sendOne('{{ email }}', '{{ filename }}');">
                     Send
@@ -88,11 +88,11 @@ async function calcEA(filename) {
 }
 
 async function sendOne(email, filename) {
-    let btnid = document.getElementById(email + "-send");
+    const btnid = document.getElementById(email + "-send");
     btnid.disabled = true;
-    let statusid = document.getElementById(email + "-status");
+    const statusid = document.getElementById(email + "-status");
     statusid.innerHTML = '<span class="badge bg-warning">Sending...</span>';
-    let url = "/notify/send-one-email";
+    const url = "/notify/send-one-email";
     // send form data instead of JSON
     const formData = new URLSearchParams({
         email: email,
@@ -102,7 +102,25 @@ async function sendOne(email, filename) {
         method: 'POST',
         body: formData,
     });
-    console.log("Response: ", response);
+    // check if the response.status is 200
+    const responseData = await response.json();
+    const result = responseData.result;
+    const code = responseData.code;
+
+    if ((code >= 200) && (code < 300)) {
+        statusid.innerHTML = '<span class="badge bg-success">' + result + '</span>';
+        btnid.innerHTML = 'Sent';
+    } else if (code === 400) {
+        statusid.innerHTML = '<span class="badge bg-danger">' + result + '</span>';
+        btnid.innerHTML = 'Error';
+    } else if (code === 401) {
+        statusid.innerHTML = '<span class="badge bg-danger">Unauthorized</span>';
+        btnid.innerHTML = 'Error';
+    } else {
+        statusid.innerHTML = '<span class="badge bg-danger">Error:' + result + '</span>';
+        btnid.innerHTML = 'Error';
+    }
+
 }
 
 </script>
