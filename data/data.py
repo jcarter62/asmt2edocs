@@ -6,6 +6,7 @@
 from .wmisdb import WMISDB, DBError
 from dotenv import load_dotenv
 import os
+import uuid
 
 load_dotenv()
 
@@ -86,18 +87,19 @@ class Data:
                 conn = wmisdb.connection
                 cursor = conn.cursor()
                 sql = '''
-                    select distinct cme.email, 
-                    ltrim(
-                    rtrim(
-                        rtrim(
-                        isnull(cmc.FirstName,'') + ' ' + isnull(cmc.MiddleName, '') 
-                        ) + ' ' + isnull(cmc.LastName,'')
-                    )
-                    ) as ContactName 
+                    select distinct 
+                        ltrim(rtrim(cme.email)) as email, 
+                        ltrim(
+                            rtrim(
+                                isnull(cmc.FirstName,'') + ' ' + isnull(cmc.MiddleName, '')
+                            ) + ' ' + isnull(cmc.LastName,'')
+                        ) 
+                        as ContactName 
                     from CMEmail cme
                     join CMNameContact cmn on cme.IDEmail = cmn.IDEmail
                     join CMContact cmc on cmn.IDContact = cmc.IDContact
-                    where cme.Email = ? ;
+                    where 
+                        rtrim(cme.Email) = rtrim(?);
                 '''
                 #
                 # grant select on v_CMEmailNoticeTypes to user
@@ -116,4 +118,37 @@ class Data:
                 print(f'Unexpected Error:{err}')
 
         return result
-    
+
+    def log_email_sent(self, email=None, account=None, filename=None):
+        """Log the email sent to the database."""
+        if email is None or account is None or filename is None :
+            return
+
+        # remember to: grant insert on NameNotes to user
+        #
+        # create a guid for the log entry
+        guid_id = str(uuid.uuid4()).replace('-', '').replace('{', '').replace('}','').lower()
+
+        try:
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            txt = f"{filename} Available: {email}"
+
+            sql = '''
+                insert into NameNotes ( id, name_id, txt, cmethod, topic ) 
+                values ( ?, ?, ?, 'Email', 'E-Docs');  
+            '''
+            #
+            # grant select on v_CMEmailNoticeTypes to user
+            #
+            conn.execute(sql, (guid_id, account, txt,))
+            conn.commit()
+            wmisdb = None
+        except DBError as err:
+            print(f'DB Error:{err}')
+        except Exception as err:
+            print(f'Unexpected Error:{err}')
+
+        return
+
+

@@ -7,6 +7,7 @@ import os
 import time
 from pdf import PDF
 from PyPDF2 import PdfReader, PdfWriter
+import pikepdf
 import json
 
 app_root = os.getenv("APP_ROOT", os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +54,7 @@ def extract_info(request: Request, filename: str):
 import base64
 import json 
 
-@router.get("/one-account/{params}") 
+@router.get("/one-account/{params}")
 def extract_one_account(params):
     def b32_to_obj(inp):
         decoded = base64.b32decode(inp)
@@ -76,40 +77,34 @@ def extract_one_account(params):
     save_date = file_settings["save_date"]
 
     result = False
-    
+
     pdf = PDF()
     target_folder = pdf.calculate_target_folder(account)
     if not os.path.exists(target_folder):
         os.makedirs(target_folder)
-    desination_file = os.path.join(target_folder, save_as)
+    destination_file = os.path.join(target_folder, save_as)
 
-    # extract pages from source_file, from page_start to page_end, and save to desination_file
+    # extract pages from source_file, from page_start to page_end, and save to destination_file
     source_file = os.path.join(os.environ.get("UPLOAD_FOLDER", "./"), filename)
-
-    reader = PdfReader(source_file)
-    writer = PdfWriter()
-
-    for i in range(page_start-1, page_end):
-        onepage = reader.pages[i]
-        writer.add_page(onepage)
 
     save_result = False
     try:
-        with open(desination_file, "wb") as f:
-            writer.write(f)
-            result = True
-            save_result = True
-    except:
+        with pikepdf.Pdf.open(source_file) as src_pdf:
+            with pikepdf.Pdf.new() as dest_pdf:
+                for i in range(page_start - 1, page_end):
+                    dest_pdf.pages.append(src_pdf.pages[i])
+                dest_pdf.save(destination_file)
+                result = True
+                save_result = True
+    except Exception as e:
         save_result = False
 
     # update the destination file's date
     if save_result:
         date_and_time = save_date + " 00:00:00"
-        set_file_dates(desination_file, date_and_time)
+        set_file_dates(destination_file, date_and_time)
 
-    reader = None 
-    writer = None
-    return { "result": result }
+    return {"result": result}
 
 def set_file_dates(file_path, new_date_time):
     # Convert the time to the required format

@@ -6,6 +6,7 @@ import json
 from fastapi.templating import Jinja2Templates
 from settings import load_settings_for_file
 from data import Data
+from progress_status import ProgressStatus
 
 
 router = APIRouter()
@@ -26,7 +27,7 @@ def select_for_processing(request: Request):
         allFiles = os.listdir(upload_folder)
         # include only pdf files
         for f in allFiles:
-            if f.endswith(".pdf"):
+            if f.endswith(".pdf") and not f.endswith(".test.pdf"):
                 item = {"filename": f}
                 files.append(item)
 
@@ -42,8 +43,16 @@ def select_for_processing(request: Request):
         idnum = 1001
         for f in files:
             idnum = idnum + 3
-            f["id"] = idnum 
-        
+            f["id"] = idnum
+
+        for f in files:
+            # determine of there is a test.pdf file for this file
+            _test_filename = os.path.join(upload_folder, f["filename"] + ".test.pdf")
+            if os.path.exists(_test_filename):
+                f["test"] = _test_filename
+            else:
+                f["test"] = ''
+
     except Exception:
         files = []
     context = {
@@ -112,4 +121,18 @@ def email_lookup(request: Request, filename: str):
         pass
 
     return RedirectResponse(url="/select", status_code=303)
+
+@router.get("/progress/init/{filename}")
+def progress_init(request: Request, filename: str):
+    ps = ProgressStatus(filename=filename)
+    # Initialize the progress status with a maximum value
+    ps.init()
+    return {"message": "ok"}
+
+@router.get("/progress/get_current/{filename}")
+def progress_get_current(request: Request, filename: str):
+    ps = ProgressStatus(filename=filename)
+    cur_obj = ps.get_current()
+    print(f"Current progress: {cur_obj}: for {filename}")
+    return cur_obj
 

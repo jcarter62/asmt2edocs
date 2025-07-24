@@ -25,7 +25,7 @@ def upload_form(request: Request):
         allFiles = os.listdir(upload_folder)
         # include only pdf files
         for f in allFiles:
-            if f.endswith(".pdf"):
+            if f.endswith(".pdf") and ( not f.endswith(".test.pdf")):
                 item = {"filename": f}
                 files.append(item)
 

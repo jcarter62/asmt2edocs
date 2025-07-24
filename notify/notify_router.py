@@ -20,7 +20,7 @@ templates = Jinja2Templates(directory=os.path.join(app_root, "templates"))
 router = APIRouter()
 
 @router.get("/show/{filename}", response_class=HTMLResponse)
-def notify_root(request: Request, filename: str):
+def notify_show(request: Request, filename: str):
     if not Auth().is_user_logged_in(request):
         # Redirect to the login page if not logged in
         return RedirectResponse(url="/auth/login", status_code=303)
@@ -130,6 +130,7 @@ async def notify_send_one_email_post(request: Request,
                                        filename: str = Form(...)):
     result = None
     code = 500
+    current_user = ''
 
     if not Auth().is_user_logged_in(request):
         result = ""
@@ -140,7 +141,9 @@ async def notify_send_one_email_post(request: Request,
         load_dotenv()
         upload_folder = os.getenv("upload_folder", "./")
         email_settings_file = os.path.join(upload_folder, filename + ".email_addresses")
-  
+        # from .env, UPDATE_WMIS_LOG=yes/no
+        update_wmis_log = os.getenv("UPDATE_WMIS_LOG", "no").lower() == "yes"
+
         account_emails = []
         if os.path.exists(email_settings_file):
             with open(email_settings_file, "r") as f:
@@ -168,11 +171,16 @@ async def notify_send_one_email_post(request: Request,
             # add date and time to bottom of body
             body += f"\n\n{time.strftime('%Y-%m-%d %H:%M:%S')}"
             # replace the placeholders in the body with the account numbers
-            body = body.replace("{account_numbers}", accounts_text)
+            if body.find("{account_numbers}") > 0:
+                body = body.replace("{account_numbers}", accounts_text)
+
             data = Data()
-            name = data.get_contact_name(email=email)
-            body = body.replace("{email_name}", name['name'])
-            body = body.replace("{email_address}", email)
+            if body.find("{email_name}") > 0:
+                name = data.get_contact_name(email=email)
+                body = body.replace("{email_name}", name['name'])
+            if body.find("{email_address}") > 0:
+                body = body.replace("{email_address}", email)
+
             from_address = os.getenv("MAIL_FROM", "")
             # send the email
 
@@ -193,13 +201,20 @@ async def notify_send_one_email_post(request: Request,
                 send_result = email_Sender.send_email()
                 edb.update_send_status(email, "sent")
 
+                if update_wmis_log:
+                    for a in accounts:
+                        data.log_email_sent(email=email, account=a, filename=filename)
+
                 result = "Email sent successfully."
                 code = 201
             except Exception as e:
                 result = f"Error sending email: {str(e)}"
                 code = 500
             finally:
-                edb = None
+                if edb:
+                    edb = None
+                if data:
+                    data = None
 
         else:
             result = "Email address not found in email addresses file."
@@ -234,6 +249,17 @@ async def set_email_status(request: Request,
     db = EmailDB(filename=filename)
     db.update_send_status(email, status)
     return {"message": "Email status updated successfully."}
+
+@router.post("/get-email-status")
+async def get_email_status(request: Request,
+                            filename: str = Form(...),
+                            email: str = Form(...)):
+    db = EmailDB(filename=filename)
+    record = db.get_email_record(email)
+    if record:
+        return {"email": email, "status": record[2], "timestamp": record[3]}
+    else:
+        return {"email": email, "status": "not found", "timestamp": None}
 
 @router.post("/reset-all-email-status")
 async def reset_all_email_status(request: Request, 

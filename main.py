@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Form
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.sessions import SessionMiddleware
@@ -12,6 +12,7 @@ from auth import router as auth_router
 from select_route import router as select_router
 from extract.extract_router import router as extract_router
 from notify.notify_router import router as notify_router
+from pdf import PDF
 import os
 import platform
 import json
@@ -59,12 +60,15 @@ def landing_page(request: Request):
     }
     return templates.TemplateResponse("landing.html", context)
 
-
-
 def process_the_pdf(filename):
     pdf = PDF(filename)
     result = pdf.process_pdf()
     return
+
+def process_pdf_test(filename):
+    pdf = PDF(filename)
+    result = pdf.process_pdf_test()
+    return result
 
 @app.post("/process")
 async def process_file(filename: str = Form(...)):
@@ -76,6 +80,16 @@ async def process_file(filename: str = Form(...)):
     process_the_pdf(file_path)
     return {"info": f"File '{filename}' processing completed."}
 
+
+@app.post("/process/test")
+async def process_test_file(filename: str = Form(...)):
+    upload_folder = os.environ.get("UPLOAD_FOLDER", "./")
+    file_path = os.path.join(upload_folder, filename)
+    if not os.path.exists(file_path):
+        return {"error": f"File '{filename}' not found."}
+
+    result = process_pdf_test(file_path)
+    return result;
 
 @app.post("/delete/all/files")
 async def delete_all_files(filename: str = Form(...)):  # changed function name
@@ -105,6 +119,16 @@ async def send_favicon_file():
         return HTMLResponse(content=content, media_type="image/x-icon")
     else:
         return HTMLResponse(content="", status_code=404)
+
+@app.get("/dumpfile/{filename}", response_class=HTMLResponse)
+async def dump_file(filename: str):
+    test_file=os.environ.get("UPLOAD_FOLDER", "./")
+    test_file = os.path.join(test_file, filename)
+    test_file = test_file + ".test.pdf"
+    if not os.path.exists(test_file):
+        return {"error": f"File '{test_file}' not found."}
+
+    return FileResponse(test_file, media_type="application/pdf", filename=f"{filename}.test.pdf")
 
 if __name__ == "__main__":
     import uvicorn

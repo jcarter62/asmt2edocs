@@ -95,6 +95,14 @@ def save_settings_for_file(request: Request, filename: str,
     except Exception as e:
         result = {"error": f"Error saving settings: {str(e)}"}
 
+    # remove test file if it exists
+    test_file = os.path.join(upload_folder, filename + ".test.pdf")
+    if os.path.exists(test_file):
+        try:
+            os.remove(test_file)
+        except Exception as e:
+            result["error"] = f"Error removing test file: {str(e)}"
+
     return result
 
 def load_settings_for_file(filename: str):
@@ -124,3 +132,20 @@ def load_settings_for_file(filename: str):
         settings = json.load(f)
 
     return settings
+
+@router.get("/check-exist/{filename}")
+def check_exist_filename(request: Request, filename: str):
+    result = {"result": -1}
+    try:
+        upload_folder = os.getenv("upload_folder", "./")
+
+        file_path = os.path.join(upload_folder, filename)
+
+        if os.path.exists(file_path):
+            result = {"result": 1}
+        else:
+            result = {"result": 0}
+    except Exception as e:
+        result = {"result": -2}
+
+    return result

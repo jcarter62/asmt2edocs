@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="container">
     <div class="row">
@@ -17,6 +18,17 @@
             <button class="btn btn-primary" onclick="calcEA('{{filename}}')" id="calcEA_btn">
                 Calc Email Accounts for this PDF
             </button>
+        </div>
+
+        <div class="col-4">
+            <button class="btn btn-primary" onclick="send_all_not_sent('{{filename}}')" id="sendAll_btn">
+                Send All (Not Sent)
+            </button>
+        </div>
+        <div class="col-4" style="display: block;" id="progress-bar-container">
+            <div class="progress">
+                <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
         </div>
     </div>
     {% if message %}
@@ -42,9 +54,11 @@
         </div>
         {% for email in email_list %}
         <div class="row">
-            <div class="col-8">{{ email }}</div>
+            <div class="col-8 one-email" onclick="updateStatus('{{ email }}');" style="cursor: pointer;">
+                {{ email }}
+            </div>
             <div class="col-2" >
-                <button class="btn btn-primary" id="{{email}}-send"
+                <button class="btn btn-primary" id="{{ email }}-send"
                     style="padding-left: 0.25rem; padding-right: 0.25rem; padding-top: 0.15rem; padding-bottom: 0.15rem;" 
                     onclick="sendOne('{{ email }}', '{{ filename }}');">
                     Send
@@ -82,9 +96,15 @@ async function calcEA(filename) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({})
+
+        // refresh this page after the request is complete
+
     });
+
     console.log("Response: ", response);
     btnid.disabled = false;
+
+    window.location.reload();
 }
 
 async function sendOne(email, filename) {
@@ -96,8 +116,9 @@ async function sendOne(email, filename) {
     // send form data instead of JSON
     const formData = new URLSearchParams({
         email: email,
-        filename: filename,
+        filename: filename
     });
+
     const response = await fetch(url, {
         method: 'POST',
         body: formData,
@@ -121,7 +142,149 @@ async function sendOne(email, filename) {
         btnid.innerHTML = 'Error';
     }
 
+    updateProgressBar();
 }
+
+
+let email_count = 0;
+
+async function updateStatus(email) {
+    try {
+        const btnid = document.getElementById(email + "-send");
+        btnid.disabled = true;
+        const statusid = document.getElementById(email + "-status");
+        statusid.innerHTML = '<span class="badge bg-warning">Checking...</span>';
+
+        const url = "/notify/get-email-status";
+        const formData = new URLSearchParams({
+            email: email,
+            filename: '{{ filename }}'
+        });
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+
+        const responseData = await response.json();
+        const result = responseData.result;
+        const code = responseData.code;
+
+        console.log("Response: ", responseData);
+        const status = responseData.status;
+        if ( status == "sent" ) {
+            statusid.innerHTML = '<span class="badge bg-success">Sent</span>';
+            btnid.innerHTML = 'Sent';
+            btnid.disabled = true;
+        } else {
+            statusid.innerHTML = '<span class="badge bg-danger">Not Sent</span>';
+            btnid.innerHTML = 'Send';
+            btnid.disabled = false;
+        }
+    } catch (error) {
+        console.error("***** Error updating status: ", error);
+        console.error("***** Email: ", email);
+    }
+    email_count--;
+}
+
+async function checkStatus(filename) {
+    const calcEA_btn = document.getElementById("calcEA_btn");
+    calcEA_btn.disabled = true;
+    const sendAll_btn = document.getElementById("sendAll_btn");
+    sendAll_btn.disabled = true;
+
+    email_count = 0;
+
+    // Get all elements with class "one-email"
+    const objs = document.getElementsByClassName("one-email");
+    // Loop through each element and update its status
+
+    email_count = objs.length;
+    for (let i = 0; i < objs.length; i++) {
+        let email = objs[i].innerText;
+        updateStatus(email);
+    }
+
+    // Wait for all updates to complete
+    let start_time = new Date();
+    // wait for 60 seconds or until all emails are processed
+    while ((email_count > 0) && (new Date() - start_time < 60000)) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    calcEA_btn.disabled = false;
+    sendAll_btn.disabled = false;
+    updateProgressBar();
+}
+
+window.onload = function() {
+    checkStatus('{{ filename }}');
+};
+
+async function send_all_not_sent(filename) {
+    const calcEA_btn = document.getElementById("calcEA_btn");
+    const sendAll_btn = document.getElementById("sendAll_btn");
+
+    calcEA_btn.disabled = true;
+    sendAll_btn.disabled = true;
+
+    let n = 50;
+    // Get all elements with class "one-email"
+    const objs = document.getElementsByClassName("one-email");
+    // Loop through each element and update its status
+
+    // for each element, send the email until n emails are sent
+    let emails_to_send = [];
+    let email_count = 0;
+    for (let i = 0; i < objs.length; i++) {
+        let email = objs[i].innerText;
+        let btnid = document.getElementById(email + "-send");
+        let btnTxt = btnid.innerText;
+        if (btnTxt.includes("Sent")) {
+            continue; // skip already sent emails
+        }
+        if (email_count >= (n-1)) {
+            break;
+        }
+        emails_to_send.push(email);
+        email_count++;
+    }
+
+    updateProgressBar();
+
+    const emailPromises = [];
+    // for each email in emails_to_send, send the email
+    for (let i = 0; i < emails_to_send.length; i++) {
+        emailPromises.push(sendOne(emails_to_send[i], filename))
+    }
+    await Promise.all(emailPromises);
+
+    calcEA_btn.disabled = false;
+    sendAll_btn.disabled = false;
+}
+
+function updateProgressBar() {
+    const progressBar = document.getElementById("progress-bar");
+    const objs = document.getElementsByClassName("one-email");
+
+    let totalEmails = objs.length;
+    let sentEmails = 0;
+    for (let i = 0; i < totalEmails; i++) {
+        let email = objs[i].innerText;
+        let statusid = document.getElementById(email + "-send");
+        if (statusid.innerText.toLowerCase() == "sent") {
+            sentEmails++;
+        }
+    }
+
+    // calculate percentage
+    let percentage = (sentEmails / totalEmails) * 100;
+    progressBar.style.width = percentage + "%";
+    progressBar.setAttribute("aria-valuenow", percentage);
+    progressBar.innerText = sentEmails + " of " + totalEmails + " emails sent";
+}
+
 
 </script>
 

@@ -109,4 +109,7 @@ def load_email_list_EA(filename: str):
     # remove duplicates from the list of email addresses
     results = list(dict.fromkeys(results))
 
+    # trim whitespace from each email address
+    results = [email.strip() for email in results if email.strip()]
+
     return results
