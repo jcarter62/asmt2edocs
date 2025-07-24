@@ -34,9 +34,10 @@ load_dotenv()
 configure_logging()
 
 app_root = os.getenv("APP_ROOT", os.path.dirname(os.path.abspath(__file__)))
-templates = Jinja2Templates(directory=os.path.join(app_root, "templates"))
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(base_dir, "templates"))
+
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=os.path.join(base_dir, "static")), name="static")
