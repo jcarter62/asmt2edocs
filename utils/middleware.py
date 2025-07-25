@@ -21,12 +21,16 @@ class ContextProcessorMiddleware(BaseHTTPMiddleware):
                 os.environ["upload_folder"] = settings.get("upload_folder", "./")
                 os.environ["appname"] = settings.get("appname", "A2EDocs")
                 os.environ["search_pattern"] = settings.get("search_pattern", "Account Number\\n(\\d+)\\b")
+                os.environ["test_flag"] = settings.get("test_flag", "off")
+                os.environ["test_email"] = settings.get("test_email", "")
         else:
             os.environ["BASE_FOLDER"] = "./"
             os.environ["company"] = "Default Company"
             os.environ["upload_folder"] = "./"
             os.environ["appname"] = "A2EDocs"
             os.environ["search_pattern"] = "Account Number\\n(\\d+)\\b"
+            os.environ["test_flag"] = "off"
+            os.environ["test_email"] = ""
 
         request.state.context = {
             "appname": os.environ.get("appname", "A2EDocs"),
@@ -36,6 +40,8 @@ class ContextProcessorMiddleware(BaseHTTPMiddleware):
             "search_pattern": os.environ.get("search_pattern", "Account Number\\n(\\d+)\\b"),
             "logged_in": logged_in,
             "username": username,
+            "test_flag": os.environ.get("test_flag", "off"),
+            "test_email": os.environ.get("test_email", ""),
         }
         response = await call_next(request)
         return response

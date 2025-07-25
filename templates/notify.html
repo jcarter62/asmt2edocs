@@ -82,6 +82,7 @@
 let pgs = [];
 let start_time = new Date();
 let finish_time = new Date();
+let run_state = "production";
 
 async function calcEA(filename) {
     let btnid = document.getElementById("calcEA_btn");
@@ -218,9 +219,34 @@ async function checkStatus(filename) {
     updateProgressBar();
 }
 
+async function checkRunState() {
+    const url = "/notify/check-run-state/";
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+
+    const responseData = await response.json();
+    const result = responseData.state;
+
+    if ( result == "debug") {
+        run_state = "test";
+        let btnid = document.getElementById("sendAll_btn");
+        btnid.innerText = "Send next 20 emails (Test Mode)";
+    } else {
+        run_state = "production";
+        let btnid = document.getElementById("sendAll_btn");
+        btnid.innerText = "Send All (Not Sent)";
+    }
+}
+
 window.onload = function() {
+    checkRunState();
     checkStatus('{{ filename }}');
 };
+
 
 async function send_all_not_sent(filename) {
     const calcEA_btn = document.getElementById("calcEA_btn");
@@ -229,7 +255,13 @@ async function send_all_not_sent(filename) {
     calcEA_btn.disabled = true;
     sendAll_btn.disabled = true;
 
-    let n = 50;
+    let n = 0;
+    if (run_state == "test") {
+        n = 20;
+}   else {
+        n = 99999; // in production, send all emails
+    }
+
     // Get all elements with class "one-email"
     const objs = document.getElementsByClassName("one-email");
     // Loop through each element and update its status

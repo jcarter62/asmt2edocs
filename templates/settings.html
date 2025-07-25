@@ -18,7 +18,9 @@
                                value="{{ upload_folder }}">
                     </div>
                     <div class="col-md-1 text-right">
-                        <button type="button" id="upload_folder_info_button" class="btn btn-info">?</button>
+                        <button type="button" id="upload_folder_info_button" class="btn btn-info"
+                                 onclick="showHideInfo('upload_folder_info')"
+                        >?</button>
                     </div>
                 </div>
                 <p id="upload_folder_info" style="display: none;">
@@ -34,7 +36,9 @@
                                value="{{ base_folder }}">
                     </div>
                     <div class="col-md-1 text-right">
-                        <button type="button" id="base_folder_info_button" class="btn btn-info">?</button>
+                        <button type="button" id="base_folder_info_button" class="btn btn-info"
+                                onclick="showHideInfo('base_folder_info')"
+                        >?</button>
                     </div>
                 </div>
                 <p id="base_folder_info" style="display: none;">
@@ -46,39 +50,60 @@
                     {base folder}/00/00/00/44/10. This is where the individual pdf is stored for this account.
                 </p>
 
+                <label for="test_flag">Test sending email:</label>
+                <div class="row">
+                    <div class="col-md-1">
+                        <input type="checkbox" id="test_flag" name="test_flag" class="form-control"
+                        {% if test_flag == "on" %}
+                            checked
+                        {% endif %}
+                        >
+                    </div>
+                    <div class="col-md-10">
+                        &nbsp;
+                    </div>
+                    <div class="col-md-1 text-right">
+                        <button type="button" id="test_flag_info_button" class="btn btn-info"
+                                onclick="showHideInfo('test_flag_info')"
+                        >?</button>
+                    </div>
+                </div>
+                <p id="test_flag_info" style="display: none;">
+                    This setting allows you to test sending email notices.  When this is turned on
+                    sending emails will send to the Test Email Address.
+                </p>
+
+                <label for="test_email">Test sending email:</label>
+                <div class="row">
+                    <div class="col-md-11">
+                        <input type="text" id="test_email" name="test_email" class="form-control"
+                               value="{{ test_email }}">
+                    </div>
+                    <div class="col-md-1 text-right">
+                        <button type="button" id="test_email_info_button" class="btn btn-info"
+                                onclick="showHideInfo('test_email_info')"
+                        >?</button>
+                    </div>
+                </div>
+                <p id="test_email_info" style="display: none;">
+                    This email address is used to send notification emails when <b>Test sending email</b>
+                    is turned on.  Notifications will only be delivered to this test email address.
+                </p>
+
             </div>
             <button type="submit" class="btn btn-primary">Save Settings</button>
 
         </form>
     </div>
     <script>
-        document.getElementById("base_folder_info_button").addEventListener("click", function () {
-            var info = document.getElementById("base_folder_info");
-            if (info.style.display === "none") {
-                info.style.display = "block";
+        function showHideInfo(info_id) {
+            let id = document.getElementById(info_id);
+            if (id.style.display === "none") {
+                id.style.display = "block";
             } else {
-                info.style.display = "none";
+                id.style.display = "none";
             }
-        });
-
-        document.getElementById("upload_folder_info_button").addEventListener("click", function () {
-            var info = document.getElementById("upload_folder_info");
-            if (info.style.display === "none") {
-                info.style.display = "block";
-            } else {
-                info.style.display = "none";
-            }
-        });
-
-        document.getElementById("search_pattern_info_button").addEventListener("click", function () {
-            var info = document.getElementById("search_pattern_info");
-            if (info.style.display === "none") {
-                info.style.display = "block";
-            } else {
-                info.style.display = "none";
-            }
-        });
-
+        }
 
     </script>
 {% endblock %}

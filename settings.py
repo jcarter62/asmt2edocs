@@ -28,7 +28,8 @@ async def update_settings(request: Request,
                           company: str = Form(...),
                           upload_folder: str = Form(...),
                           appname: str = Form(...),
-                          # search_pattern: str = Form(...)
+                          test_flag: str = Form(None),
+                          test_email: str = Form(...),
                           ):
     # Update the BASE_FOLDER environment variable
     os.environ["base_folder"] = base_folder
@@ -47,7 +48,8 @@ async def update_settings(request: Request,
             "company": company,
             "upload_folder": upload_folder,
             "appname": appname,
-            # "search_pattern": search_pattern
+            "test_flag": "on" if test_flag else "off",
+            "test_email": test_email,
         }
         f.write(json.dumps(settings, indent=4, sort_keys=True))
 

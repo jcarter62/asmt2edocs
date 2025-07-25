@@ -19,8 +19,19 @@ class EmailSender:
         self.smtp_port = int(os.getenv('SMTP_PORT', 587))  # Add SMTP port
         self.smtp_user = os.getenv('SMTP_USER', '')  # Add SMTP username
         self.smtp_password = os.getenv('SMTP_PASSWORD', '')  # Add SMTP password
-        self.debug = (os.getenv('MAIL_DEBUG', 'False') == 'True')
-        self.debug_recipients = [os.getenv('MAIL_DEBUG_TO_ADDRESS', '')]
+        #
+        self.debug = False
+        self.debug_recipients = []
+        # determine if test_flag is set, and test_email is set.
+        self.test_flag = (os.getenv('TEST_FLAG', 'off').lower() == 'on')
+        self.test_email = os.getenv('TEST_EMAIL', '').strip()
+        if self.test_email > '':
+            if self.test_flag:
+                self.debug = True
+                self.debug_recipients = [self.test_email]
+
+        # self.debug = (os.getenv('MAIL_DEBUG', 'False') == 'True')
+        # self.debug_recipients = [os.getenv('MAIL_DEBUG_TO_ADDRESS', '')]
         self.debug_prefix = '[EmailSender] '
 
         self.api = os.getenv('SMTP2GO_API_KEY', '')

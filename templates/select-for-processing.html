@@ -28,14 +28,6 @@
                                         <img src="/static/images/text-box-search-outline.svg" width="20" height="20"
                                              alt="calculator">
                                     </button>
-                                    <div id="{{ file.id }}progress" class="progress" style="display: block;"
-                                    onclick="updateProgressBar('{{ file.id }}');"
-                                    >
-                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                                 role="progressbar" style="width: 0%;" aria-valuenow="1" aria-valuemin="0"
-                                                 aria-valuemax="100">
-                                            </div>
-                                    </div>
                                 </div>
                                 <div class="col-md-1">
                                     <button id="{{ file.id }}EP" class="btn btn-primary"
@@ -352,6 +344,12 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6"></div>
+                                <div class="col-md-5">
+                                    <div id="{{ file.id }}progress" style="display: none;">&nbsp;</div>
+                                </div>
+                            </div>
                         </li>
                     {% endfor %}
                 </ul>
@@ -360,6 +358,8 @@
     </div>
 
     <script>
+        let progressBarTimer = null;
+
         function asyncSubmit(event, id, filename) {
             event.preventDefault();
             const formData = new FormData();
@@ -371,9 +371,11 @@
             element.disabled = true;
             element = document.getElementById(id + "icon");
             element.style.display = "block";
+            element = document.getElementById(id + "progress");
+            element.style.display = "block";
 
             // setup timer to update the progress bar every 2 seconds
-            setInterval(() => {
+            progressBarTimer = setInterval(() => {
                 updateProgressBar(id);
             }, 2000);
 
@@ -390,9 +392,8 @@
                     element.disabled = false;
                     element = document.getElementById(id + "icon");
                     element.style.display = "none";
-
-                    // stop the timer for updating the progress bar
-                    clearInterval(updateProgressBar);
+                    element = document.getElementById(id + "progress");
+                    element.style.display = "none";
 
                 })
                 .catch(error => {
@@ -415,20 +416,16 @@
                 let progress = (result.current / result.total) * 100;
                 // round progress to nearest integer
                 progress = Math.round(progress);
-                let progressBar = document.getElementById(id + "progress").getElementsByClassName("progress-bar")[0];
+                let progressBar = document.getElementById(id + "progress");
                 if (progressBar) {
-                    progressBar.style.width = progress + "%";
-                    progressBar.setAttribute("aria-valuenow", progress);
-                    // Change color based on progress
-                    if (progress < 30) {
-                        progressBar.style.backgroundColor = "#dc3545"; // red
-                    } else if (progress < 70) {
-                        progressBar.style.backgroundColor = "#ffc107"; // yellow
-                    } else if (progress < 100) {
-                        progressBar.style.backgroundColor = "#007bff"; // blue
-                    } else {
-                        progressBar.style.backgroundColor = "#28a745"; // green
-                    }
+                    let txt = progress + "%";
+                    progressBar.innerText = txt;
+                }
+
+                if (progress > 99.5) {
+                    // disable the timer for updating the progress bar
+                    clearInterval(progressBarTimer);
+                    progressBarTimer = null;
                 }
             } catch (error) {
                 console.error("An error occurred while processing the file:", error);

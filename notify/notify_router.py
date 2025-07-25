@@ -291,4 +291,13 @@ async def reset_all_email_status(request: Request,
         db.update_send_status(email, status)
     db = None 
     return {"message": "All email statuses updated successfully."}
- 
+
+
+@router.get("/check-run-state")
+def check_run_state(request: Request):
+    if os.getenv("test_flag", "off").lower() == "on":
+        rslt = {"state": "debug"}
+    else:
+        rslt = {"state": "production"}
+
+    return rslt
