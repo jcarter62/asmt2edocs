@@ -264,32 +264,11 @@ async def get_email_status(request: Request,
 @router.post("/reset-all-email-status")
 async def reset_all_email_status(request: Request, 
                                  filename: str = Form(...),
-                                 status: str = Form(...),
                                 ):
-    #
-    # reset the email status in the database to calculated status
-    #
+    # remove any existing email addresses in sqlite db.
     db = EmailDB(filename=filename)
-    # load the email addresses from the file
-    email_settings_file = ''
-    load_dotenv()
-    upload_folder = os.getenv("upload_folder", "./")
-    email_settings_file = os.path.join(upload_folder, filename + ".email_addresses")
-    # load contents of email_addresses file into account_emails
-    account_emails = []
-    if os.path.exists(email_settings_file):
-        with open(email_settings_file, "r") as f:
-            account_emails = json.load(f)
-    else:
-        # if the file does not exist, create an empty list
-        pass
-    #
-    # loop through the email addresses and set the status
-    for item in account_emails:
-        email = item['email']
-        # update the status in the database
-        db.update_send_status(email, status)
-    db = None 
+    db.reset_email_status()
+    db = None
     return {"message": "All email statuses updated successfully."}
 
 

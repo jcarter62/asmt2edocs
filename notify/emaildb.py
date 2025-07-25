@@ -17,11 +17,12 @@ class EmailDB:
         self._initialize_database()
 
     def reset_email_status(self):
-        """Wipe the database by deleting the file."""
-        if os.path.exists(self.db_path):
-            os.remove(self.db_path)
-        self._initialize_database()
-        return 
+        """remove all email records."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM email_records WHERE 1=1;')
+            conn.commit()
+        return
 
     def _initialize_database(self):
         """Initialize the database and create the table if it doesn't exist."""

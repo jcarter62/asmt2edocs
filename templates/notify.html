@@ -25,10 +25,13 @@
                 Send All (Not Sent)
             </button>
         </div>
-        <div class="col-4" style="display: block;" id="progress-bar-container">
+        <div class="col-3" style="display: block;" id="progress-bar-container">
             <div class="progress">
                 <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
+        </div>
+        <div id="resetEmailButton" class="col-1" style="display: none;">
+            <button class="btn btn-warning" onclick="resetEmailSent('{{filename}}')">Reset Sent</button>
         </div>
     </div>
     {% if message %}
@@ -235,10 +238,14 @@ async function checkRunState() {
         run_state = "test";
         let btnid = document.getElementById("sendAll_btn");
         btnid.innerText = "Send next 20 emails (Test Mode)";
+        btnid = document.getElementById("resetEmailButton");
+        btnid.style.display = "block"; // show reset button in test mode
     } else {
         run_state = "production";
         let btnid = document.getElementById("sendAll_btn");
         btnid.innerText = "Send All (Not Sent)";
+        btnid = document.getElementById("resetEmailButton");
+        btnid.style.display = "none"; // hide reset button in production mode
     }
 }
 
@@ -316,6 +323,31 @@ function updateProgressBar() {
     progressBar.setAttribute("aria-valuenow", percentage);
     progressBar.innerText = sentEmails + " of " + totalEmails + " emails sent";
 }
+
+// resetEmailSent('{{filename}}')"
+async function resetEmailSent(filename) {
+    try {
+        const url = "/notify/reset-all-email-status";
+        const formData = new URLSearchParams({
+            filename: '{{ filename }}',
+        });
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+
+        const responseData = await response.json();
+
+        console.log("Response: ", responseData);
+    } catch (error) {
+        console.error("***** Error updating status: ", error);
+        console.error("***** Email: ", email);
+    }
+    // reload the page to reflect changes
+    window.location.reload();
+}
+
 
 
 </script>
