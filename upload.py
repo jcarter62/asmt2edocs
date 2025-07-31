@@ -5,6 +5,7 @@ from starlette.responses import RedirectResponse
 import os
 import json
 from auth import Auth
+from filestate import FileState
 
 router = APIRouter()
 
@@ -59,6 +60,10 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)):
         f.write(await file.read())
 
     upload_form_url = request.url_for("upload_form")
+
+    fs = FileState(file.filename)
+    fs.set(0)  # Reset the state to 0 after upload
+
     return RedirectResponse(upload_form_url, status_code=303)
 
 @router.post("/delete/{filename}")

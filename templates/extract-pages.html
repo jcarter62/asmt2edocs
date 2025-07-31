@@ -62,7 +62,23 @@ function calc_finish_time(progress) {
     return finish_time.toLocaleTimeString("en-US", {hour: '2-digit', minute: '2-digit', second: '2-digit'});
 }
 
+
 async function extractPages() {
+    function updateFileState(filename, state) {
+        let url = "/state/set/" + state + "/" + filename;
+        fetch(url, {
+            method: "POST",
+        })
+            .then(response => response.json())
+            .then(result => {
+                let msg = result.state;
+                console.log("State updated: ", msg);
+            })
+            .catch(error => {
+                console.error("Error updating state:", error);
+            });
+    }
+
     start_time = new Date();
 
     let btnid = document.getElementById("extract_btn");
@@ -86,6 +102,7 @@ async function extractPages() {
         progressBar.innerText = Math.round(progress) + "% - finish at:" + calc_finish_time(progress);
     }
 
+    updateFileState("{{pdf}}", 3);
     statusid.innerText = "Done";
     btnid.disabled = false;
 }

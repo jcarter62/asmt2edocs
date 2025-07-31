@@ -1,5 +1,104 @@
 {% extends "base.html" %}
 {% block content %}
+<script>
+    function loadFileState(id, filename) {
+        let url = "/state/get/" + filename;
+        fetch(url)
+            .then(response => response.json())
+            .then(result => {
+                let msg = result.state;
+                console.log("Current state: ", msg);
+            })
+            .catch(error => {
+                console.error("Error loading state:", error);
+            });
+    }
+
+    function updateFileState(id, filename, state) {
+        let url = "/state/set/" + state + "/" + filename;
+        fetch(url, {
+            method: "POST",
+        })
+            .then(response => response.json())
+            .then(result => {
+                let msg = result.state;
+                console.log("State updated: ", msg);
+                enableButtons(id, filename);
+            })
+            .catch(error => {
+                console.error("Error deleting files:", error);
+                alert("An error occurred while saving the settings.");
+            });
+    }
+
+    async function enableButtons(id, filename) {
+            function disableButton(id) {
+                let button = document.getElementById(id);
+                if (button) {
+                    button.disabled = true;
+                }
+            }
+            function enableButton(id) {
+                let button = document.getElementById(id);
+                if (button) {
+                    button.disabled = false;
+                }
+            }
+
+            let currState = await (async () => {
+                let url = "/state/get/" + filename;
+                try {
+                    let response = await fetch(url);
+                    let result = await response.json();
+                    return result.state;
+                } catch (error) {
+                    console.error("Error loading state:", error);
+                    return null;
+                }
+            })();
+
+            switch (currState) {
+                case 0:
+                    enableButton(id + "_set");
+                    disableButton(id + "B");
+                    disableButton(id + "EP");
+                    disableButton(id + "email_calc");
+                    disableButton(id + "DEL");
+                    break;
+                case 1:
+                    // Settings saved, enable process button
+                    enableButton(id + "_set");
+                    enableButton(id + "B");
+                    disableButton(id + "EP");
+                    disableButton(id + "email_calc");
+                    disableButton(id + "DEL");
+                    break;
+                case 2:
+                    // Processed, disable all buttons
+                    enableButton(id + "_set");
+                    enableButton(id + "B");
+                    enableButton(id + "EP");
+                    disableButton(id + "email_calc");
+                    disableButton(id + "DEL");
+                    break;
+                case 3:
+                    enableButton(id + "_set");
+                    enableButton(id + "B");
+                    enableButton(id + "EP");
+                    enableButton(id + "email_calc");
+                    enableButton(id + "DEL");
+                    break;
+                case 4:
+                    disableButton(id + "_set");
+                    disableButton(id + "B");
+                    disableButton(id + "EP");
+                    enableButton(id + "email_calc");
+                    disableButton(id + "DEL");
+                    break;
+            }
+    }
+</script>
+
     <h2>Select Files for Processing</h2>
     <div class="container">
         <div class="row">
@@ -9,7 +108,9 @@
                         <li class="list-group-item">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div id="{{ file.id }}">{{ file.filename }}</div>
+                                    <div id="{{ file.id }}" onclick="loadFileState('{{ file.id }}', '{{ file.filename }}');">
+                                        {{ file.filename }}
+                                    </div>
                                 </div>
                                 <!-- https://emojipedia.org/ -->
                                 <div class="col-md-1">
@@ -22,7 +123,7 @@
                                 </div>
                                 <div class="col-md-1">
                                     <button id="{{ file.id }}B" class="btn btn-primary"
-                                            onclick="asyncSubmit(event, '{{ file.id }}', '{{ file.filename }}' );"
+                                            onclick="identifyPages(event, '{{ file.id }}', '{{ file.filename }}' );"
                                             title="Calculate page numbers for each account in the pdf"
                                     >
                                         <img src="/static/images/text-box-search-outline.svg" width="20" height="20"
@@ -351,6 +452,10 @@
                                 </div>
                             </div>
                         </li>
+                        <script>
+                        // enable buttons based on the file state
+                        enableButtons("{{ file.id }}", "{{ file.filename }}");
+                        </script>
                     {% endfor %}
                 </ul>
             </div>
@@ -360,7 +465,7 @@
     <script>
         let progressBarTimer = null;
 
-        function asyncSubmit(event, id, filename) {
+        function identifyPages(event, id, filename) {
             event.preventDefault();
             const formData = new FormData();
             formData.append("filename", filename);
@@ -395,6 +500,8 @@
                     element = document.getElementById(id + "progress");
                     element.style.display = "none";
 
+                    // Success, so update state to 2.
+                    updateFileState(id, filename, 2);
                 })
                 .catch(error => {
                     alert("An error occurred while processing the file.");
@@ -549,7 +656,7 @@
                 .then(result => {
                     // Handle the result if needed
                     show_test_buttons();
-//                    window.location.reload(); // Reload the page to reflect changes
+                    updateFileState(id, filename, 1);
                 })
                 .catch(error => {
                     console.error("Error saving settings:", error);
@@ -569,8 +676,9 @@
                 .then(response => response.json())
                 .then(result => {
                     let msg = result.info;
-
+                    updateFileState(id, filename, 2); // update the state to 2, page numbers identified.
                     alert(msg);
+                    enableButtons(id, filename);
                 })
                 .catch(error => {
                     console.error("Error deleting files:", error);
@@ -611,6 +719,5 @@
                 console.log("Test file name: ", test_file_name);
             }
         }
-
     </script>
 {% endblock %}

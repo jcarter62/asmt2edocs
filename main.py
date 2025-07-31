@@ -22,6 +22,7 @@ from starlette.requests import Request
 from settings import load_settings_for_file
 from auth import Auth
 import logging
+from filestate import FileState
 
 if platform.system() == "Windows":
     pass
@@ -130,6 +131,19 @@ async def dump_file(filename: str):
         return {"error": f"File '{test_file}' not found."}
 
     return FileResponse(test_file, media_type="application/pdf", filename=f"{filename}.test.pdf")
+
+
+@app.get("/state/get/{filename}")
+async def get_state(filename: str):
+    file_state = FileState(filename=filename)
+    current_state = file_state.get()
+    return {"state": current_state}
+
+@app.post("/state/set/{state}/{filename}")
+async def set_state(state: int, filename: str):
+    file_state = FileState(filename=filename)
+    file_state.set(state)
+    return {"state": state}
 
 if __name__ == "__main__":
     import uvicorn

@@ -111,6 +111,20 @@ async function calcEA(filename) {
     window.location.reload();
 }
 
+function updateFileState(filename, state) {
+    let url = "/state/set/" + state + "/" + filename;
+    fetch(url, {
+        method: "POST",
+    })
+        .then(response => response.json())
+        .then(result => {
+            let msg = result.state;
+        })
+        .catch(error => {
+            console.error("Error updating state:", error);
+        });
+}
+
 async function sendOne(email, filename) {
     const btnid = document.getElementById(email + "-send");
     btnid.disabled = true;
@@ -135,6 +149,7 @@ async function sendOne(email, filename) {
     if ((code >= 200) && (code < 300)) {
         statusid.innerHTML = '<span class="badge bg-success">' + result + '</span>';
         btnid.innerHTML = 'Sent';
+        updateFileState(filename,4); // record at least one email sent
     } else if (code === 400) {
         statusid.innerHTML = '<span class="badge bg-danger">' + result + '</span>';
         btnid.innerHTML = 'Error';
@@ -338,7 +353,7 @@ async function resetEmailSent(filename) {
         });
 
         const responseData = await response.json();
-
+        updateFileState(filename, 3); // emails not sent.
         console.log("Response: ", responseData);
     } catch (error) {
         console.error("***** Error updating status: ", error);
