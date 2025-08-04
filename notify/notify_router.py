@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Request, UploadFile, File, Form
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from settings import load_settings_for_file
-from pdf import PDF
 import os
 import time
 import json
@@ -199,13 +198,18 @@ async def notify_send_one_email_post(request: Request,
                 edb = EmailDB(filename=filename)
                 edb.update_send_status(email, "sending")
                 send_result = email_Sender.send_email()
-                edb.update_send_status(email, "sent")
+                if send_result:
+                    result = "sent"
+                    edb.update_send_status(email, "sent")
+                else:
+                    result = "not sent"
+                    edb.update_send_status(email, "not sent")
 
-                if update_wmis_log:
+                if update_wmis_log and send_result:
                     for a in accounts:
                         data.log_email_sent(email=email, account=a, filename=filename)
 
-                result = "Email sent successfully."
+                result = f"Email {result}."
                 code = 201
             except Exception as e:
                 result = f"Error sending email: {str(e)}"

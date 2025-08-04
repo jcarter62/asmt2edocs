@@ -74,8 +74,8 @@ class EmailSender:
             print(f'{self.debug_prefix} {msg} {datetime.now()}')
 
 
-    def send_email(self):
-
+    def send_email(self) -> bool:
+        result = False
         if self.method == 'smtp':
             try:
                 self.logmsg('Preparing to send email message.')
@@ -102,6 +102,7 @@ class EmailSender:
                     server.starttls()  # Upgrade the connection to secure
                     server.login(self.smtp_user, self.smtp_password)
                     server.send_message(msg)
+                result = True
 
                 self.logmsg('Email message sent successfully.')
             except Exception as e:
@@ -126,9 +127,13 @@ class EmailSender:
                 }
 
                 response = requests.post(url, json=payload, headers=headers)
+                respData = response.json()['data']
+                if respData['succeeded'] == 1:
+                    result = True
 
                 self.logmsg('Email message sent successfully.' + response.text)
             except Exception as e:
                 self.logmsg(f'Error sending email via API: {e}')
                 raise RuntimeError(f"Failed to send email via API: {e}")
 
+        return result
