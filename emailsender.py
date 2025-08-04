@@ -15,10 +15,10 @@ class EmailSender:
 
         self.mail_from = os.getenv('MAIL_FROM')
         self.mail_from_name = os.getenv('MAIL_FROM_NAME', '')
-        self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.example.com')  # Add SMTP server
-        self.smtp_port = int(os.getenv('SMTP_PORT', 587))  # Add SMTP port
-        self.smtp_user = os.getenv('SMTP_USER', '')  # Add SMTP username
-        self.smtp_password = os.getenv('SMTP_PASSWORD', '')  # Add SMTP password
+        self.smtp_server = os.getenv('SMTP_SERVER', 'smtp.example.com')
+        self.smtp_port = int(os.getenv('SMTP_PORT', 587))
+        self.smtp_user = os.getenv('SMTP_USER', '')
+        self.smtp_password = os.getenv('SMTP_PASSWORD', '')
         #
         self.debug = False
         self.debug_recipients = []
