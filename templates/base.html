@@ -2,7 +2,9 @@
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>{{ appname }} - {{ company }}</title>
+	<title>
+        {{ appname }} - {{ company }}
+    </title>
     <!-- Mobile-first meta tag -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Bootstrap CSS -->
@@ -38,8 +40,17 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand-lg navbar-light
+        {% if test_flag == "on" %}
+        bg-danger
+        {% else %}
+        bg-light
+        {% endif %}
+        ">
         <a class="navbar-brand" href="/">{{ appname }}</a>
+        {% if test_flag == "on" %}
+        ** Test Mode DATABASE **
+        {% endif %}
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>

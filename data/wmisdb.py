@@ -20,6 +20,7 @@ import pyodbc
 from dotenv import load_dotenv
 from os import getenv
 
+from utils.middleware import settings_loader
 
 load_dotenv()
 
@@ -50,11 +51,24 @@ class WMISDB:
         depends on the decouple library to read the connection details from the environment variables or .env file.
         :return: None
         """
-        self._server = getenv('SQLSERVER', default='localhost')
-        self._instance = getenv('INSTANCE', default='')
-        self._database = getenv('DATABASE', default='database')
-        self._username = getenv('UID', default='username')
-        self._password = getenv('PASSWORD', default='password')
+        # determine if running in test mode
+
+        settings_loader()  # Load settings into environment variables
+        if getenv('TEST_FLAG', 'off').lower() == 'on':
+            # if test_flag is set, then use the test database
+            self._server = getenv('TEST_SQLSERVER', default='localhost')
+            self._instance = getenv('TEST_INSTANCE', default='')
+            self._database = getenv('TEST_DATABASE', default='test_database')
+            self._username = getenv('TEST_UID', default='test_username')
+            self._password = getenv('TEST_PASSWORD', default='test_password')
+        else:
+            # if test_flag is not set, then use the production database
+            self._server = getenv('SQLSERVER', default='localhost')
+            self._instance = getenv('INSTANCE', default='')
+            self._database = getenv('DATABASE', default='database')
+            self._username = getenv('UID', default='username')
+            self._password = getenv('PASSWORD', default='password')
+
         self.connection = self._connection_()
         super().__init__()
         return
