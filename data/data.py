@@ -136,6 +136,7 @@ class Data:
             #
             #  grant insert on namenotes to api
             #  grant update on namenotes to api;
+            #  grant select on namenotes to api;
             #
             sql = '''
                 insert into NameNotes ( id, name_id, txt, cmethod, topic ) 
