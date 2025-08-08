@@ -153,13 +153,12 @@ async def notify_send_one_email_post(request: Request,
         address_found = False
         accounts = []
         for item in account_emails:
-            if item['email'] == email:
+            if item['email'].rstrip() == email:
                 address_found = True
                 accounts = item['accounts']
                 accounts_text = ''
                 for a in accounts:
                     accounts_text += f"{a}\n"
-
                 break
         if address_found:
             # prepare the email to be sent

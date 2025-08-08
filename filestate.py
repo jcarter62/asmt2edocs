@@ -34,9 +34,14 @@ class FileState:
 
     def _save_state(self, state_json):
         import json
-        file_path = self._calc_file_path()
-        with open(file_path, 'w') as f:
-            json.dump(state_json, f)
+        try:
+            file_path = self._calc_file_path()
+            with open(file_path, 'w') as f:
+                json.dump(state_json, f)
+        except Exception as e:
+            print(f"Error saving state to file: {e}")
+            # Optionally, you can raise an exception or handle it as needed
+            # raise e
         return
 
 
@@ -47,6 +52,7 @@ class FileState:
             current_state = self._load_state()
             current_state['state'] = state
             self._save_state(current_state)
+
 
     def get(self):
         # Retrieve current state and return
