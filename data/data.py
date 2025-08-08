@@ -133,15 +133,20 @@ class Data:
             wmisdb = WMISDB()
             conn = wmisdb.connection
             txt = f"{filename} Available: {email}"
-
+            #
+            #  grant insert on namenotes to api
+            #  grant update on namenotes to api;
+            #
             sql = '''
                 insert into NameNotes ( id, name_id, txt, cmethod, topic ) 
-                values ( ?, ?, ?, 'Email', 'E-Docs');  
+                values ( ?, ?, ?, ?, ?);  
             '''
+            cmethod = 'Email'
+            topic = 'E-Docs'
             #
             # grant select on v_CMEmailNoticeTypes to user
             #
-            conn.execute(sql, (guid_id, account, txt,))
+            conn.execute(sql, (guid_id, account, txt, cmethod, topic))
             conn.commit()
             wmisdb = None
         except DBError as err:
