@@ -126,12 +126,19 @@ class EmailSender:
                     'X-Smtp2go-Api-Key': self.api
                 }
 
+                result = False
+                resultText = 'Not Sent'
+
                 response = requests.post(url, json=payload, headers=headers)
                 respData = response.json()['data']
                 if respData['succeeded'] == 1:
                     result = True
+                    resultText = 'Sent'
+                else:
+                    result = False
+                    resultText = 'Not Sent'
 
-                self.logmsg('Email message sent successfully.' + response.text)
+                self.logmsg('Email message sent successfully.' + resultText)
             except Exception as e:
                 self.logmsg(f'Error sending email via API: {e}')
                 raise RuntimeError(f"Failed to send email via API: {e}")
