@@ -14,17 +14,24 @@
     </div>
 
     <div class="row">
-        <div class="col-4">
+        <div class="col-3">
             <button class="btn btn-primary" onclick="calcEA('{{filename}}')" id="calcEA_btn">
                 Calc Email Accounts for this PDF
             </button>
         </div>
 
-        <div class="col-4">
+        <div class="col-3">
             <button class="btn btn-primary" onclick="send_all_not_sent('{{filename}}')" id="sendAll_btn">
                 Send All (Not Sent)
             </button>
         </div>
+
+        <div class="col-3">
+            <button class="btn btn-primary" onclick="WMIS_upload_and_create_log('{{filename}}');" id="WMIS_log_create_btn">
+                Log to WMIS
+            </button>
+        </div>
+
         <div class="col-3" style="display: block;" id="progress-bar-container">
             <div class="progress">
                 <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
@@ -53,7 +60,8 @@
         <div class="row" style="padding-bottom: 1rem;">
             <div class="col-8">Email Address</div>
             <div class="col-2">Action</div>
-            <div class="col-2">Status</div>
+            <div class="col-1">Status</div>
+            <div class="col-1">WMIS Log</div>
         </div>
         {% for email in email_list %}
         <div class="row">
@@ -67,12 +75,15 @@
                     Send
                 </button>
             </div>
-            <div class="col-2" id="{{email}}-status">
+            <div class="col-1" id="{{email}}-status">
                 {% if email in sent_emails %}
                     <span class="badge bg-success">Sent</span>
                 {% else %}
                     <span class="badge bg-danger">Not Sent</span>
                 {% endif %}
+            </div>
+            <div class="col-1">
+                <img id="{{ email }}-wmis-update" src="/static/images/mystery_inspect.svg" width="15" height="15">
             </div>
         </div>
         {% endfor %}
@@ -235,6 +246,9 @@ async function checkStatus(filename) {
     calcEA_btn.disabled = false;
     sendAll_btn.disabled = false;
     updateProgressBar();
+
+    // check the WMIS log status
+    check_WMIS_log(filename);
 }
 
 async function checkRunState() {
@@ -339,6 +353,28 @@ function updateProgressBar() {
     progressBar.innerText = sentEmails + " of " + totalEmails + " emails sent";
 }
 
+async function updateAccountNotes(email) {
+    const btnid = document.getElementById(email + "-wmis-update");
+    btnid.disabled = true;
+
+    const url = "/notify/update-wmis-log-for-one-email";
+    const formData = new URLSearchParams({
+        email: email,
+        filename: '{{ filename }}'
+    });
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+        const responseData = await response.json();
+    } catch (error) {
+        console.error("***** Error updating account notes: ", error);
+    }
+    btnid.disabled = false;
+}
+
 // resetEmailSent('{{filename}}')"
 async function resetEmailSent(filename) {
     try {
@@ -363,7 +399,89 @@ async function resetEmailSent(filename) {
     window.location.reload();
 }
 
+async function uploadEmailAddr() {
 
+    const url = "/notify/upload-email-addresses";
+    try {
+        const formData = new URLSearchParams({
+            filename: '{{ filename }}'
+        });
+        const response = await fetch(url, {
+            method: "POST",
+            body: formData,
+        });
+        const responseData = await response.json();
+        console.log("Response: ", responseData);
+    } catch (error) {
+        console.error("***** Error upload-email-addresses: ", error);
+    }
+}
+
+async function check_WMIS_log(filename) {
+    let btnid = document.getElementById("WMIS_log_create_btn");
+    btnid.disabled = true;
+
+    const url = "/notify/wmis-log-status";
+    const formData = new URLSearchParams({
+        filename: '{{ filename }}'
+    });
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+        const resp = await response.json();
+        // for each record in resp (email address, status)
+        const items = resp.result;
+
+        items.forEach(item => {
+            let email = item.email;
+            let status = item.log_status;
+            let imgid = document.getElementById(email + "-wmis-update");
+            if (status === "yes") {
+                imgid.src = "/static/images/check_circle.svg"; // logged icon
+            } else {
+                imgid.src = "/static/images/cancel_circle.svg"; // not logged icon
+            }
+        });
+        btnid.disabled = false;
+
+    } catch (error) {
+        console.error("***** Error checking WMIS log: ", error);
+    }
+}
+
+async function WMIS_log_create(filename) {
+    let btnid = document.getElementById("WMIS_log_create_btn");
+    btnid.disabled = true;
+
+    const url = "/notify/wmis-log-create";
+    const formData = new URLSearchParams({
+        filename: '{{ filename }}'
+    });
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+        const resp = await response.json();
+        // for each record in resp (email address, status)
+        const items = resp.result;
+        btnid.disabled = false;
+
+        window.location.reload(); // reload the page to reflect changes
+
+    } catch (error) {
+        console.error("***** Error checking WMIS log: ", error);
+    }
+}
+
+async function WMIS_upload_and_create_log(filename) {
+    await uploadEmailAddr(filename);
+    await WMIS_log_create(filename);
+ }
 
 </script>
 

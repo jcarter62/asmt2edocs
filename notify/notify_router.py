@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from settings import load_settings_for_file
 import os
@@ -130,11 +130,13 @@ async def notify_send_one_email_post(request: Request,
     result = None
     code = 500
     current_user = ''
+    auth = Auth()
 
-    if not Auth().is_user_logged_in(request):
+    if not auth.is_user_logged_in(request):
         result = ""
         code = 401
     else:
+        current_user = auth.get_current_user(request)
         # verify email found in email_addresses file
         email_settings_file = ''
         load_dotenv()
@@ -204,9 +206,11 @@ async def notify_send_one_email_post(request: Request,
                     result = "not sent"
                     edb.update_send_status(email, "not sent")
 
-                if update_wmis_log and send_result:
-                    for a in accounts:
-                        data.log_email_sent(email=email, account=a, filename=filename)
+                # if update_wmis_log and send_result:
+                #     for a in accounts:
+                #         data.log_email_sent(
+                #             email=email, account=a, filename=filename,
+                #             timestamp=time.strftime('%Y-%m-%d %H:%M:%S'), user=current_user)
 
                 result = f"Email {result}."
                 code = 201
@@ -225,6 +229,211 @@ async def notify_send_one_email_post(request: Request,
         
     return {'result': result, 'code': code}
 
+
+@router.post("/update-wmis-log-for-one-email")
+async def notify_update_wmis_log_for_one_email_post(request: Request,
+                                     email: str = Form(...),
+                                     filename: str = Form(...)):
+    result = None
+    code = 500
+    current_user = ''
+    auth = Auth()
+
+    if not auth.is_user_logged_in(request):
+        result = ""
+        code = 401
+    else:
+        load_dotenv()
+        # verify email found in email_addresses file
+        email_settings_file = ''
+        current_user = request.session.get("user", "")
+        upload_folder = os.getenv("upload_folder", "./")
+        email_settings_file = os.path.join(upload_folder, filename + ".email_addresses")
+        # from .env, UPDATE_WMIS_LOG=yes/no
+        update_wmis_log = os.getenv("UPDATE_WMIS_LOG", "no").lower() == "yes"
+
+        account_emails = []
+        if os.path.exists(email_settings_file):
+            with open(email_settings_file, "r") as f:
+                account_emails = json.load(f)
+
+        # find the email in the account_emails list
+        # and return the corresponding account numbers
+        address_found = False
+        accounts = []
+        for item in account_emails:
+            if item['email'].rstrip() == email:
+                address_found = True
+                accounts = item['accounts']
+                accounts_text = ''
+                for a in accounts:
+                    accounts_text += f"{a}\n"
+                break
+
+        if address_found:
+            data = Data()
+            try:
+                edb = EmailDB(filename=filename)
+                send_status = edb.get_email_record(email)
+                if send_status:
+                    if send_status[2] == "sent":
+                        timestamp = send_status[3]
+
+                        if update_wmis_log:
+                            for a in accounts:
+                                data.log_email_sent(
+                                    email=email, account=a, filename=filename,
+                                    timestamp=timestamp, user=current_user)
+
+                else:
+                    pass
+
+                result = f"Completed."
+                code = 201
+            except Exception as e:
+                result = f"Error sending email: {str(e)}"
+                code = 500
+            finally:
+                pass
+
+        else:
+            result = "Email address not found in email addresses file."
+            code = 404
+
+    return {'result': result, 'code': code}
+
+
+@router.post("/check-wmis-log-for-one-email")
+async def check_wmis_log_for_one_email_post(request: Request,
+                                     email: str = Form(...),
+                                     filename: str = Form(...)):
+    result = 404
+    result_txt = ""
+    acct_logged = False
+
+    load_dotenv()
+    # verify email found in email_addresses file
+    upload_folder = os.getenv("upload_folder", "./")
+    email_settings_file = os.path.join(upload_folder, filename + ".email_addresses")
+
+    account_emails = []
+    if os.path.exists(email_settings_file):
+        with open(email_settings_file, "r") as f:
+            account_emails = json.load(f)
+
+    # find the email in the account_emails list
+    # and return the corresponding account numbers
+    address_found = True
+
+    accounts = []
+    for item in account_emails:
+        if item['email'].rstrip() == email:
+            address_found = True
+            accounts = item['accounts']
+            accounts_text = ''
+            for a in accounts:
+                accounts_text += f"{a}\n"
+            break
+
+    if address_found:
+        data = Data()
+        try:
+            edb = EmailDB(filename=filename)
+            send_status = edb.get_email_record(email)
+            if send_status:
+                if send_status[2] == "sent":
+                    timestamp = send_status[3]
+
+                    for a in accounts:
+                        if data.is_email_logged(email=email, account=a, filename=filename, timestamp=timestamp):
+                            result_txt = f"Email {email} logged for account {a}."
+                            result = 201
+                        else:
+                            result_txt = f"Email {email} not logged for account {a}."
+                            result = 204
+                            break # finished if any account is not logged
+
+            else:
+                result_txt = f"send_status = False for: {email}"
+                result = 404 # send status not found.
+
+        except Exception as e:
+            result_txt = f"Error checking WMIS log: {str(e)}"
+            result = 500
+        finally:
+            pass
+
+    else:
+        result_txt = "Email address not found in email addresses file."
+        result = 404
+
+    return {"result": result_txt, "code": result}
+
+
+@router.post("/check-wmis-log")
+async def check_wmis_log_for_one_email_post(request: Request,
+                                     filename: str = Form(...)):
+    result = 404
+    result_txt = ""
+    acct_logged = False
+
+    load_dotenv()
+    # verify email found in email_addresses file
+    upload_folder = os.getenv("upload_folder", "./")
+    email_settings_file = os.path.join(upload_folder, filename + ".email_addresses")
+
+    account_emails = []
+    if os.path.exists(email_settings_file):
+        with open(email_settings_file, "r") as f:
+            account_emails = json.load(f)
+
+    # find the email in the account_emails list
+    # and return the corresponding account numbers
+    address_found = True
+
+    accounts = []
+    for item in account_emails:
+        if item['email'].rstrip() == email:
+            address_found = True
+            accounts = item['accounts']
+            accounts_text = ''
+            for a in accounts:
+                accounts_text += f"{a}\n"
+            break
+
+    if address_found:
+        data = Data()
+        try:
+            edb = EmailDB(filename=filename)
+            send_status = edb.get_email_record(email)
+            if send_status:
+                if send_status[2] == "sent":
+                    timestamp = send_status[3]
+
+                    for a in accounts:
+                        if data.is_email_logged(email=email, account=a, filename=filename, timestamp=timestamp):
+                            result_txt = f"Email {email} logged for account {a}."
+                            result = 201
+                        else:
+                            result_txt = f"Email {email} not logged for account {a}."
+                            result = 204
+                            break # finished if any account is not logged
+
+            else:
+                result_txt = f"send_status = False for: {email}"
+                result = 404 # send status not found.
+
+        except Exception as e:
+            result_txt = f"Error checking WMIS log: {str(e)}"
+            result = 500
+        finally:
+            pass
+
+    else:
+        result_txt = "Email address not found in email addresses file."
+        result = 404
+
+    return {"result": result_txt, "code": result}
 
 
 @router.post("/reset-email-status")
@@ -283,3 +492,66 @@ def check_run_state(request: Request):
         rslt = {"state": "production"}
 
     return rslt
+
+
+@router.post("/upload-email-addresses")
+def upload_email_addresses(request: Request, filename: str = Form(...)):
+    from wmis_upload import upload_email_addr, upload_email_records
+
+
+    try:
+        uploader1 = upload_email_addr(filename=filename)
+        uploader1.upload_to_sql()
+
+        uploader2 = upload_email_records(filename=filename)
+        uploader2.upload_to_sql()
+
+        result = "Email addresses uploaded successfully."
+
+    except FileNotFoundError     as e:
+        result = f"File not found: {str(e)}"
+    except ValueError            as e:
+        result = f"Value error: {str(e)}"
+    except Exception as e:
+        result = f"An error occurred: {str(e)}"
+
+    return {"result": result}
+
+@router.post("/upload-email-addresses")
+def upload_email_addresses(request: Request, filename: str = Form(...)):
+    from wmis_upload import upload_email_addr, upload_email_records
+
+
+    try:
+        uploader1 = upload_email_addr(filename=filename)
+        uploader1.upload_to_sql()
+
+        uploader2 = upload_email_records(filename=filename)
+        uploader2.upload_to_sql()
+
+        result = "Email addresses uploaded successfully."
+
+    except FileNotFoundError     as e:
+        result = f"File not found: {str(e)}"
+    except ValueError            as e:
+        result = f"Value error: {str(e)}"
+    except Exception as e:
+        result = f"An error occurred: {str(e)}"
+
+    return {"result": result}
+
+
+####################
+@router.post("/wmis-log-status")
+def wmis_log_status(request: Request, filename: str = Form(...)):
+    data = Data()
+    result = data.get_wmis_log_status(filename=filename)
+    data = None
+    return {"result": result}
+
+@router.post("/wmis-log-create")
+def wmis_log_create(request: Request, filename: str = Form(...)):
+    data = Data()
+    result = data.set_wmis_log_status(filename=filename)
+    data = None
+    return {"result": result}

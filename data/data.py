@@ -7,6 +7,7 @@ from .wmisdb import WMISDB, DBError
 from dotenv import load_dotenv
 import os
 import uuid
+from datetime import datetime
 
 load_dotenv()
 
@@ -119,42 +120,274 @@ class Data:
 
         return result
 
-    def log_email_sent(self, email=None, account=None, filename=None):
+    def log_email_sent(self, email=None, account=None, filename=None, timestamp=None, user=None):
         """Log the email sent to the database."""
         if email is None or account is None or filename is None :
             return
 
+        if timestamp is None:
+            timestamp = datetime.datetime.now().isoformat()
         # remember to: grant insert on NameNotes to user
         #
         # create a guid for the log entry
-        guid_id = str(uuid.uuid4()).replace('-', '').replace('{', '').replace('}','').lower()
 
         try:
             wmisdb = WMISDB()
             conn = wmisdb.connection
             txt = f"{filename} Available: {email}"
+
+            timestamp_object = datetime.fromisoformat(timestamp)
+            timestamp_object = timestamp_object.replace(microsecond=0)
+
+            # Format to non-ISO format
+            new_timestamp = timestamp_object.strftime('%Y-%m-%d %H:%M:%S')
+
             #
-            #  grant insert on namenotes to api
-            #  grant update on namenotes to api;
-            #  grant select on namenotes to api;
+            # check to see if the log record already exists
             #
-            sql = '''
-                insert into NameNotes ( id, name_id, txt, cmethod, topic ) 
-                values ( ?, ?, ?, ?, ?);  
-            '''
-            cmethod = 'Email'
-            topic = 'E-Docs'
-            #
-            # grant select on v_CMEmailNoticeTypes to user
-            #
-            conn.execute(sql, (guid_id, account, txt, cmethod, topic))
-            conn.commit()
-            wmisdb = None
+            sql = """
+                select isnull(id,''), isnull(cdate,''), isnull(cuser,'') from NameNotes 
+                where name_id = ? and txt = ? and cmethod = ? and topic = ?
+                and cdate between dateadd(hour, -2, ?) and dateadd(hour, 2, ?);
+            """
+            c = conn.cursor()
+            c.execute(sql, (account, txt, 'Email', 'E-Docs', new_timestamp, new_timestamp,))
+            row = c.fetchone()
+            if row is None:
+                # No existing record found, create a new one.
+                id = ''
+            else:
+                id = row[0]
+                cdate = row[1]
+                cuser = row[2]
+
+            if id <= '':
+                # Create new record.
+                id = str(uuid.uuid4()).replace('-', '').replace('{', '').replace('}', '').lower()
+
+                sql = '''
+                      insert into NameNotes (id, name_id, txt, cmethod, topic)
+                      values (?, ?, ?, ?, ?); \
+                      '''
+                cmethod = 'Email'
+                topic = 'E-Docs'
+                #
+                # grant select on v_CMEmailNoticeTypes to user
+                #
+                conn.execute(sql, (id, account, txt, cmethod, topic))
+                conn.commit()
+
+                cdate = new_timestamp
+                cuser = ''
+
+            else:
+                pass
+
+
+            if cdate == timestamp_object and cuser == user:
+                # No need to update, the record already exists with the same timestamp and user.
+                pass
+            else:
+                # update existing record, with cdate = timestamp and cuser = current user.
+                sql = """
+                    update NameNotes
+                    set cdate = ?, cuser = ?
+                    where id = ?;
+                """
+                if user is None:
+                    user = ''
+
+                conn.execute(sql, (new_timestamp, user, id,))
+                conn.commit()
         except DBError as err:
             print(f'DB Error:{err}')
         except Exception as err:
             print(f'Unexpected Error:{err}')
-
         return
 
+    def is_email_logged(self, email=None, account=None, filename=None, timestamp=None):
+        """Check if the email has already been logged."""
+        rslt = False
+        if email is None or account is None or filename is None:
+            return rslt
+        if timestamp is None:
+            timestamp = datetime.now().isoformat()
+
+        try:
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            txt = f"{filename} Available: {email}"
+
+            timestamp_object = datetime.fromisoformat(timestamp)
+            timestamp_object = timestamp_object.replace(microsecond=0)
+
+            # Format to non-ISO format
+            new_timestamp = timestamp_object.strftime('%Y-%m-%d %H:%M:%S')
+
+            #
+            # check to see if the log record already exists
+            #
+            sql = """
+                  select isnull(id, ''), isnull(cdate, ''), isnull(cuser, '') \
+                  from NameNotes
+                  where name_id = ? \
+                    and txt = ? \
+                    and cmethod = ? \
+                    and topic = ?
+                    and cdate between dateadd(hour, -2, ?) and dateadd(hour, 2, ?); \
+                  """
+            c = conn.cursor()
+            c.execute(sql, (account, txt, 'Email', 'E-Docs', new_timestamp, new_timestamp,))
+            row = c.fetchone()
+            if row is None:
+                # No existing record found, create a new one.
+                rslt = False
+            else:
+                rslt = True
+        except DBError as err:
+            print(f'DB Error:{err}')
+        finally:
+            wmisdb = None
+        return rslt
+
+    def delete_notify(self, filename=None):
+        """
+        Delete notification records stored in a2e_email_accts for the given filename.
+        """
+        if filename is None:
+            raise ValueError("Filename cannot be None.")
+
+        try:
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            cursor = conn.cursor()
+            sql = "DELETE FROM a2e_email_accts WHERE filename = ?;"
+            cursor.execute(sql, (filename,))
+            conn.commit()
+        except DBError as err:
+            print(f'DB Error:{err}')
+        finally:
+            wmisdb = None
+
+    def insert_notify_cmds(self, values=None):
+        """
+        Insert notification commands into the a2e_email_accts table.
+        :param values: List of Tuples containing (filename, email, account).
+        """
+        if not values:
+            raise ValueError("No commands to execute.")
+
+        try:
+            sql = "INSERT INTO a2e_email_accts (filename, email, account) VALUES (?, ?, ?);"
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            cursor = conn.cursor()
+            cursor.fast_executemany = True
+            cursor.executemany(sql, values)
+            conn.commit()
+        except DBError as err:
+            print(f'DB Error:{err}')
+        finally:
+            wmisdb = None
+
+    def delete_email_records(self, filename=None):
+        """
+        Delete email records from the a2e_email_records table for the given filename.
+        :param filename:
+        :return:
+        """
+        if filename is None:
+            raise ValueError("Filename cannot be None.")
+
+        try:
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            cursor = conn.cursor()
+            sql = "DELETE FROM a2e_email_records WHERE filename = ?;"
+            cursor.execute(sql, (filename,))
+            conn.commit()
+        except DBError as err:
+            print(f'DB Error:{err}')
+        finally:
+            wmisdb = None
+
+    def insert_email_records(self, values=None):
+        """
+        Insert email records into the a2e_email_records table.
+        :param values: List of Tuples containing (filename, id, email_address, send_status, timestamp).
+        Note: timestamp is expected to be a datetime object without timezone or microseconds.
+        :return:
+        """
+        if not values:
+            raise ValueError("No commands to execute.")
+
+        try:
+            sql = "INSERT INTO a2e_email_records (filename, id, email_address, send_status, timestamp) " + \
+                "VALUES (?, ?, ?, ?, ?);"
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            cursor = conn.cursor()
+            cursor.fast_executemany = True
+            cursor.executemany(sql, values)
+            conn.commit()
+        except Exception as err:
+            print(f'DB Error:{err}')
+        finally:
+            wmisdb = None
+
+    def get_wmis_log_status(self, filename=None):
+        """
+        Get the WMIS log status for the given filename.
+        :param filename: The name of the file to check.
+        :return: A dictionary with email & log_status.
+        """
+        if filename is None:
+            raise ValueError("Filename cannot be None.")
+
+        result = []
+
+        try:
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            cursor = conn.cursor()
+            sql = "exec sp_a2e_wmis_log_status ?;"
+            cursor.execute(sql, (filename,))
+            rows = cursor.fetchall()
+            for row in rows:
+                result.append({
+                    "email": row[0],
+                    "log_status": row[1],
+                })
+        except Exception as err:
+            print(f'Error:{err}')
+        finally:
+            wmisdb = None
+
+        return result
+
+    def set_wmis_log_status(self, filename=None):
+        """
+        Create missing WMIS log status for the given filename.
+        :param filename: The name of the file to check.
+        :return: ok if successful, else an error message.
+        """
+        if filename is None:
+            raise ValueError("Filename cannot be None.")
+
+        result = ''
+        try:
+            wmisdb = WMISDB()
+            conn = wmisdb.connection
+            cursor = conn.cursor()
+            sql = "exec sp_a2e_wmis_log_create ?;"
+            cursor.execute(sql, (filename,))
+            row = cursor.fetchone()
+            conn.commit()
+            result = row[0]
+        except Exception as err:
+            print(f'Error:{err}')
+        finally:
+            wmisdb = None
+
+        return result
 
